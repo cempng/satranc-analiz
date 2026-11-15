@@ -27,7 +27,11 @@ function audio(): AudioContext | null {
   }
 }
 
+/** Derleme sırasında public/sounds içinde bulunan sesler (yoksa istek atılmaz, yedek ses çalar). */
+const AVAILABLE = new Set<string>(typeof __SOUND_FILES__ === 'undefined' ? [] : __SOUND_FILES__);
+
 function load(ac: AudioContext, kind: MoveSound): Promise<AudioBuffer | null> {
+  if (!AVAILABLE.has(kind)) return Promise.resolve(null);
   let p = buffers.get(kind);
   if (!p) {
     p = fetch(`${import.meta.env.BASE_URL}sounds/${kind}.mp3`)
