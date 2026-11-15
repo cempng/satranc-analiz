@@ -31,9 +31,10 @@ export function t(key: MessageKey, params?: Params, lang: Lang = current): strin
   return params ? text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m)) : text;
 }
 
-/** Tarayıcı dili Türkçe değilse İngilizce önerilir. */
+/** Tarayıcı dili Türkçe değilse İngilizce önerilir. Tarayıcı dışında (ör. testlerde) Türkçe. */
 export function detectLang(): Lang {
-  if (typeof navigator === 'undefined') return 'tr';
+  // Node.js'te de `navigator` var (sistem diliyle); yalnızca gerçek tarayıcıda algıla.
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'tr';
   return navigator.language?.toLowerCase().startsWith('tr') ? 'tr' : 'en';
 }
 
