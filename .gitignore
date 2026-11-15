@@ -1,0 +1,6 @@
+node_modules
+dist
+# npm install sırasında node_modules/stockfish'ten otomatik kopyalanır
+public/stockfish
+# Derleme sırasında otomatik oluşur
+*.tsbuildinfo
