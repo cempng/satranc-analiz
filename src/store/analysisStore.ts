@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { classifyGame, type GameClassification } from '../analysis/classifyGame';
 import { loadOpeningBook, type OpeningBook } from '../analysis/openings';
 import { cacheKey, loadCachedAnalysis, saveCachedAnalysis } from '../engine/analysisCache';
-import { getEngine, type AnalysisResult } from '../engine/stockfish';
+import { engineFlavor, getEngine, type AnalysisResult } from '../engine/stockfish';
 import type { ParsedGame } from '../lib/pgn';
 import { useEngineStore } from './engineStore';
 import { useCurrentFen, useGameStore } from './gameStore';
+import { useSettingsStore } from './settingsStore';
 
 interface AnalysisState {
   status: 'idle' | 'running' | 'done' | 'cancelled';
@@ -18,14 +19,36 @@ interface AnalysisState {
   current: number;
   book: OpeningBook;
   classification: GameClassification | null;
+  /** Varyant incelenirken motor ona verilir; analiz bekler. */
+  paused: boolean;
 
   /** Oyunu analiz eder; önbellekte varsa oradan yükler (`force` ile yeniden hesaplar). */
   start: (game: ParsedGame, depth: number, options?: { force?: boolean }) => Promise<void>;
   cancel: () => void;
   reset: () => void;
+  pause: () => void;
+  resume: () => void;
+  /** Eşikler değişince sınıflandırmayı mevcut motor sonuçlarıyla yeniden hesaplar. */
+  reclassify: () => void;
 }
 
 let runId = 0;
+let resumeWaiters: (() => void)[] = [];
+/** Bir analiz pozisyonu en fazla bu kadar kez (duraklatma dışı nedenle) boş sonuç dönerse analiz durur. */
+const MAX_FAILURES = 3;
+
+const thresholds = () => useSettingsStore.getState().thresholds;
+
+function releaseWaiters() {
+  const waiters = resumeWaiters;
+  resumeWaiters = [];
+  waiters.forEach((w) => w());
+}
+
+function waitUntilResumed(): Promise<void> {
+  if (!useAnalysisStore.getState().paused) return Promise.resolve();
+  return new Promise((resolve) => resumeWaiters.push(resolve));
+}
 
 export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   status: 'idle',
@@ -35,6 +58,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   current: 0,
   book: {},
   classification: null,
+  paused: false,
 
   start: async (game, depth, options) => {
     const id = ++runId;
@@ -42,7 +66,8 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     if (id !== runId) return;
 
     const fens = [game.startFen, ...game.moves.map((m) => m.fenAfter)];
-    const key = cacheKey(fens, depth);
+    const flavor = engineFlavor();
+    const key = cacheKey(fens, depth, flavor);
     const cached = options?.force ? null : loadCachedAnalysis(key, fens.length);
     if (cached) {
       set({
@@ -52,7 +77,8 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
         evals: cached,
         current: fens.length - 1,
         book,
-        classification: classifyGame(game, cached, book),
+        classification: classifyGame(game, cached, book, thresholds()),
+        paused: false,
       });
       return;
     }
@@ -64,21 +90,28 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       evals: [],
       current: 0,
       book,
-      classification: classifyGame(game, [], book),
+      classification: classifyGame(game, [], book, thresholds()),
+      paused: false,
     });
 
     const engine = getEngine();
     for (let i = 0; i < fens.length; i++) {
       if (id !== runId) return;
       set({ current: i });
-      let result = await engine.analyze(fens[i], depth);
-      // Başka bir istek araya girdiyse (iptal edilmediysek) bir kez daha dene.
-      if (!result && id === runId) result = await engine.analyze(fens[i], depth);
-      if (id !== runId) return;
+      // Boş sonuç: başka bir istek araya girdi ya da analiz duraklatıldı → (devam edince) tekrar dene.
+      let result: AnalysisResult | null = null;
+      let failures = 0;
+      while (!result && failures < MAX_FAILURES) {
+        await waitUntilResumed();
+        if (id !== runId) return;
+        result = await engine.analyze(fens[i], depth);
+        if (id !== runId) return;
+        if (!result && !get().paused) failures++;
+      }
       if (!result) break;
       const evals = [...get().evals];
       evals[i] = result;
-      set({ evals, classification: classifyGame(game, evals, book) });
+      set({ evals, classification: classifyGame(game, evals, book, thresholds()) });
     }
     if (id !== runId) return;
     const complete = get().evals.length === fens.length && get().evals.every(Boolean);
@@ -89,13 +122,32 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   cancel: () => {
     runId++;
     getEngine().stop();
-    if (get().status === 'running') set({ status: 'cancelled' });
+    if (get().status === 'running') set({ status: 'cancelled', paused: false });
+    releaseWaiters();
   },
 
   reset: () => {
     runId++;
     if (get().status === 'running') getEngine().stop();
-    set({ status: 'idle', game: null, evals: [], current: 0, classification: null });
+    set({ status: 'idle', game: null, evals: [], current: 0, classification: null, paused: false });
+    releaseWaiters();
+  },
+
+  pause: () => {
+    if (get().status !== 'running' || get().paused) return;
+    set({ paused: true });
+    getEngine().stop();
+  },
+
+  resume: () => {
+    if (!get().paused) return;
+    set({ paused: false });
+    releaseWaiters();
+  },
+
+  reclassify: () => {
+    const { game, evals, book } = get();
+    if (game) set({ classification: classifyGame(game, evals, book, thresholds()) });
   },
 }));
 
@@ -117,3 +169,8 @@ export function useDisplayedAnalysis(): AnalysisResult | null {
   if (stored) return stored;
   return live?.fen === fen ? live : null;
 }
+
+// Ayarlardan eşikler değişince sınıflandırmayı yenile.
+useSettingsStore.subscribe((state, prev) => {
+  if (state.thresholds !== prev.thresholds) useAnalysisStore.getState().reclassify();
+});

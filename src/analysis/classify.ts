@@ -1,6 +1,6 @@
 import type { Color } from '../lib/pgn';
 import type { Score } from '../engine/uci';
-import { CLASSIFY } from './config';
+import { CLASSIFY, type ClassifyConfig } from './config';
 import type { MoveClass } from './moveClasses';
 import { winPctFor } from './winPct';
 
@@ -41,11 +41,11 @@ export interface MoveClassification {
 const NEUTRAL: Score = { type: 'cp', cp: 0 };
 
 /** Kayıp miktarına göre temel sınıf. */
-export function classByLoss(loss: number): MoveClass {
-  if (loss < CLASSIFY.excellentMaxLoss) return 'excellent';
-  if (loss < CLASSIFY.goodMaxLoss) return 'good';
-  if (loss < CLASSIFY.inaccuracyMaxLoss) return 'inaccuracy';
-  if (loss < CLASSIFY.mistakeMaxLoss) return 'mistake';
+export function classByLoss(loss: number, config: ClassifyConfig = CLASSIFY): MoveClass {
+  if (loss < config.excellentMaxLoss) return 'excellent';
+  if (loss < config.goodMaxLoss) return 'good';
+  if (loss < config.inaccuracyMaxLoss) return 'inaccuracy';
+  if (loss < config.mistakeMaxLoss) return 'mistake';
   return 'blunder';
 }
 
@@ -56,7 +56,7 @@ const SOFTER: Partial<Record<MoveClass, MoveClass>> = {
 };
 
 /** Tek bir hamleyi sınıflandırır (saf fonksiyon). */
-export function classifyMove(input: ClassifyInput): MoveClassification {
+export function classifyMove(input: ClassifyInput, config: ClassifyConfig = CLASSIFY): MoveClassification {
   const { color, before, after } = input;
   const bestLine = before.lines[0];
   const bestMove = bestLine?.pv[0];
@@ -69,7 +69,7 @@ export function classifyMove(input: ClassifyInput): MoveClassification {
   if (input.legalMoves === 1) return result('forced');
   if (input.isBook) return result('book');
 
-  const b = CLASSIFY.brilliant;
+  const b = config.brilliant;
   if (
     loss <= b.maxLoss &&
     input.sacrifice >= b.minSacrifice &&
@@ -84,23 +84,23 @@ export function classifyMove(input: ClassifyInput): MoveClassification {
   if (isBest) {
     const second = before.lines[1];
     const onlyGoodMove =
-      second !== undefined && winBefore - winPctFor(second.score, color) >= CLASSIFY.great.minGapToSecond;
+      second !== undefined && winBefore - winPctFor(second.score, color) >= config.great.minGapToSecond;
     const turnsGame =
       opponentErred &&
       input.winBeforeOpponentMove !== undefined &&
-      input.winBeforeOpponentMove <= CLASSIFY.great.turningMaxWinBefore &&
-      winAfter >= CLASSIFY.great.turningMinWinAfter;
+      input.winBeforeOpponentMove <= config.great.turningMaxWinBefore &&
+      winAfter >= config.great.turningMinWinAfter;
     if (onlyGoodMove || turnsGame) return result('great');
   }
 
-  if (opponentErred && winBefore >= CLASSIFY.missed.minBestWin && loss >= CLASSIFY.missed.minLoss) {
+  if (opponentErred && winBefore >= config.missed.minBestWin && loss >= config.missed.minLoss) {
     return result('missed');
   }
 
   if (isBest) return result('best');
 
-  let cls = classByLoss(loss);
-  const { high, low } = CLASSIFY.decided;
+  let cls = classByLoss(loss, config);
+  const { high, low } = config.decided;
   const decided = (winBefore > high && winAfter > high) || (winBefore < low && winAfter < low);
   if (decided && SOFTER[cls]) cls = SOFTER[cls]!;
   return result(cls);

@@ -10,7 +10,7 @@ Gereken: [Node.js](https://nodejs.org) 20.19 veya üstü.
 npm install
 ```
 
-`npm install` sonunda Stockfish motor dosyaları otomatik olarak `public/stockfish/` klasörüne kopyalanır.
+`npm install` sonunda Stockfish motor dosyaları (lite ve tam) otomatik olarak `public/stockfish/` klasörüne kopyalanır.
 
 ## Çalıştırma
 
@@ -32,11 +32,41 @@ Sonra tarayıcıda `http://localhost:5173` adresini aç.
 
 ## Kullanım
 
-- **PGN yükleme:** metin kutusuna yapıştır, `.pgn` dosyası seç ya da sürükle-bırak. Dosyada birden çok oyun varsa listeden seç. `[FEN]` etiketi desteklenir. Hatalı hamlede hangi hamlede sorun olduğu Türkçe yazılır.
+- **Oyun yükleme:** “Oyun” kutusunda üç yol var:
+  - **PGN:** metin kutusuna yapıştır, `.pgn` dosyası seç ya da sürükle-bırak. Dosyada birden çok oyun varsa listeden seç. `[FEN]` etiketi desteklenir; hatalı hamlede hangi hamlede sorun olduğu Türkçe yazılır.
+  - **Lichess / Chess.com:** kullanıcı adını yaz, son 20 herkese açık oyun listelenir; birine tıkla. Giriş gerekmez.
 - **Gezinme:** ← / → bir hamle, Home / End başa / sona, F tahtayı çevir. Hamle listesine, grafiğe ya da kritik anlara tıklayarak da gidebilirsin.
 - **Analiz:** oyun yüklenince otomatik başlar. Derinlik: Hızlı 12 / Normal 16 / Derin 20. Sonuçlar tarayıcıda saklanır; aynı oyunu tekrar açınca anında gelir.
-- **Varyant:** tahtada bir taşı sürükleyerek farklı bir hamle dene; motor yeni pozisyonu analiz eder. “Ana hatta dön” ile oyuna geri dön.
-- **Koç yorumu (isteğe bağlı):** Ayarlar’a bir Anthropic API anahtarı girersen her hamle için Claude’dan doğal dilde yorum alabilirsin. Anahtar yalnızca tarayıcında saklanır ve yalnızca Anthropic’e gönderilir; her istek hesabından ücretlendirilir.
+- **Varyant:** tahtada bir taşı sürükleyerek farklı bir hamle dene; motor yeni pozisyonu analiz eder (tam analiz sürüyorsa o sırada duraklar). “Ana hatta dön” ile oyuna geri dön.
+- **Hatanı bul:** analiz bitince oyundaki Hata / Büyük Hata / Kaçırılan Fırsat anlarından bulmaca çözersin. İpucu ve çözüm düğmeleri var; motorun ilk 3 hamlesi dışındaki cevaplar motorla ayrıca kontrol edilir.
+- **Analizli PGN indir:** sınıflar (!!, !, ?!, ?, ??), `[%eval]` değerlendirmeleri ve kısa yorumlarla PGN dosyası. Lichess, ChessBase gibi programlarda açılabilir.
+- **Oyun sonu veritabanı:** 7 veya daha az taş kalınca lichess’in Syzygy veritabanından kesin sonuç ve en iyi hamle gösterilir (Ayarlar’dan kapatılabilir).
+- **İstatistik sayfası:** bir kullanıcının son 5–30 oyununu toplu analiz eder: ortalama doğruluk, evrelere göre doğruluk, oyun başına hata sayıları, açılışlara göre puan ve doğruluk.
+- **Ayarlar:**
+  - Tahta teması ve hamle sesleri (sesler dosya kullanmadan tarayıcıda üretilir).
+  - Motor: **lite** (~2 MB, varsayılan) ya da **tam** (~100 MB, daha güçlü ama yavaş yüklenir).
+  - **Sınıflandırma eşikleri:** Brillant, Harika, Kaçırılan Fırsat ve kayıp sınırlarını değiştirebilirsin; tüm hamleler anında yeniden sınıflandırılır.
+  - **Koç yorumu (isteğe bağlı):** bir Anthropic API anahtarı girersen her hamle için Claude’dan doğal dilde yorum alabilirsin. Anahtar yalnızca tarayıcında saklanır ve yalnızca Anthropic’e gönderilir; her istek hesabından ücretlendirilir.
+
+### Dış servisler
+
+Uygulama sunucu gerektirmez; yalnızca şu durumlarda tarayıcı doğrudan dış servise bağlanır:
+
+| Servis | Ne zaman | Ne gönderilir |
+| --- | --- | --- |
+| lichess.org / api.chess.com | Kullanıcı adıyla oyun getirirken | Kullanıcı adı |
+| tablebase.lichess.ovh | 7 veya daha az taşlı pozisyonda (kapatılabilir) | Pozisyon (FEN) |
+| api.anthropic.com | “Koç yorumu al” düğmesine basınca | Pozisyon, hamle, sınıf, motor çizgisi |
+
+## İnternette yayınlama
+
+`vite.config.ts` göreli yol (`base: './'`) kullandığı için `dist/` klasörü herhangi bir adreste çalışır.
+
+**GitHub Pages (otomatik):** `.github/workflows/deploy.yml` hazır. Projeyi bir GitHub deposuna gönderdikten sonra depo ayarlarında *Settings → Pages → Source: GitHub Actions* seç. Bundan sonra `main` dalına her gönderimde testler çalışır, uygulama derlenir ve `https://<kullanıcı-adın>.github.io/<depo-adı>/` adresinde yayınlanır.
+
+**Netlify Drop (ücretsiz hesapla, sürükle-bırak):** `npm run build` çalıştır, oluşan `dist` klasörünü [app.netlify.com/drop](https://app.netlify.com/drop) sayfasına sürükle.
+
+Not: tam motor dosyası (~100 MB) da `dist/stockfish/` içine kopyalanır. Barındırma servisi büyük dosyaya izin vermezse yayından önce `dist/stockfish/stockfish-19-single.*` dosyalarını silebilirsin; bu durumda Ayarlar’da yalnızca lite motor kullanılabilir.
 
 ## Mimari
 
@@ -67,11 +97,11 @@ PGN metni ──► lib/pgn.ts (ayrıştırma, hata mesajları)
 
 | Klasör | İçerik |
 | --- | --- |
-| `src/engine` | Stockfish Web Worker sarmalayıcısı (`stockfish.ts`), UCI ayrıştırma ve skor dönüşümü (`uci.ts`), canlı analiz kancası, önbellek |
-| `src/analysis` | Saf fonksiyonlar: Win% (`winPct.ts`), sınıflandırma (`classify.ts`), feda tespiti, doğruluk, taktik tespitleri, yorumlar, özet; **tüm eşikler `config.ts` içinde** |
+| `src/engine` | Stockfish Web Worker sarmalayıcısı (`stockfish.ts`, lite/tam motor seçimi), UCI ayrıştırma ve skor dönüşümü (`uci.ts`), canlı analiz kancası, önbellek |
+| `src/analysis` | Saf fonksiyonlar: Win% (`winPct.ts`), sınıflandırma (`classify.ts`), feda tespiti, doğruluk, taktik tespitleri, yorumlar, özet, alıştırma bulmacaları (`practice.ts`), istatistik (`stats.ts`), PGN dışa aktarma (`exportPgn.ts`); **tüm varsayılan eşikler `config.ts` içinde** |
 | `src/components` | React bileşenleri |
-| `src/store` | Zustand depoları: oyun/gezinme/varyant, motor, tam-oyun analizi, ayarlar |
-| `src/lib` | PGN ayrıştırma ve Türkçe notasyon |
+| `src/store` | Zustand depoları: oyun/gezinme/varyant, motor, tam-oyun analizi, alıştırma, toplu istatistik, ayarlar |
+| `src/lib` | PGN ayrıştırma, Türkçe notasyon, Lichess/Chess.com istemcisi (`onlineGames.ts`), oyun sonu veritabanı (`tablebase.ts`), hamle sesleri (`sounds.ts`) |
 | `scripts` | Stockfish dosyalarını kopyalama ve açılış kitabını üretme betikleri |
 | `data/openings` | lichess açılış veritabanı (TSV kaynak dosyaları) |
 
@@ -90,10 +120,11 @@ Ayrıntılar ve tüm eşikler: [`src/analysis/config.ts`](src/analysis/config.ts
 npm test
 ```
 
-Win%, perspektif dönüşümü, mat skorları, sınıflandırma eşikleri, feda tespiti, doğruluk, taktik tespitleri, Türkçe yorumlar, PGN ayrıştırma, varyant modu ve önbellek için birim testleri vardır.
+Win%, perspektif dönüşümü, mat skorları, sınıflandırma eşikleri (varsayılan ve kullanıcı ayarı), feda tespiti, doğruluk, taktik tespitleri, Türkçe yorumlar, PGN ayrıştırma ve dışa aktarma, varyant modu, önbellek, alıştırma değerlendirmesi, istatistik toplama, Lichess/Chess.com yanıtlarının okunması ve oyun sonu veritabanı metinleri için birim testleri vardır.
 
 ## Lisanslar ve kaynaklar
 
 - **Stockfish** ([stockfish.js](https://github.com/nmrugg/stockfish.js), lite tek iş parçacıklı sürüm) GPL-3.0 lisanslıdır. Uygulamayı dağıtırsan Stockfish’in kaynak koduna erişim sağlaman gerekir.
+- **Oyun sonu veritabanı:** [lichess tablebase API](https://tablebase.lichess.ovh) (Syzygy).
 - **Açılış veritabanı:** [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), CC0 (kamu malı).
-- İkonlar ve renkler bu proje için çizilmiştir.
+- İkonlar, renkler ve hamle sesleri bu proje için üretilmiştir.

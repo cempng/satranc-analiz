@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import type { ParsedGame } from '../lib/pgn';
+import { CLASSIFY, type ClassifyConfig } from './config';
 import { classifyMove, type MoveClassification, type PositionEval } from './classify';
 import { lookupOpening, type OpeningBook, type OpeningInfo } from './openings';
 import { sacrificedMaterial } from './sacrifice';
@@ -20,6 +21,7 @@ export function classifyGame(
   game: ParsedGame,
   evals: (PositionEval | undefined)[],
   book: OpeningBook,
+  config: ClassifyConfig = CLASSIFY,
 ): GameClassification {
   const moves: (MoveClassification | undefined)[] = [];
   const openings: (OpeningInfo | undefined)[] = [lookupOpening(book, game.startFen) ?? undefined];
@@ -52,7 +54,7 @@ export function classifyGame(
         winBeforeOpponentMove: beforeOpponent?.lines[0]
           ? winPctFor(beforeOpponent.lines[0].score, move.color)
           : undefined,
-      }),
+      }, config),
     );
   });
 

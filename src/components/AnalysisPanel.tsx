@@ -1,6 +1,8 @@
 import { useAnalysisStore } from '../store/analysisStore';
+import { ExportButton } from './ExportButton';
 import { useEngineStore } from '../store/engineStore';
 import { useGameStore } from '../store/gameStore';
+import { useStatsStore } from '../store/statsStore';
 
 /** Tam-oyun analizi: başlat / ilerleme / iptal ve açılış adı. */
 export function AnalysisPanel() {
@@ -11,6 +13,9 @@ export function AnalysisPanel() {
   const { status, current, evals, classification, start, cancel } = useAnalysisStore();
   const analyzedGame = useAnalysisStore((s) => s.game);
   const analyzedDepth = useAnalysisStore((s) => s.depth);
+
+  const paused = useAnalysisStore((s) => s.paused);
+  const batchRunning = useStatsStore((s) => s.status === 'running');
 
   if (!game) return null;
   const isThisGame = analyzedGame === game;
@@ -37,7 +42,8 @@ export function AnalysisPanel() {
         ) : (
           <button
             type="button"
-            disabled={!engineReady}
+            disabled={!engineReady || batchRunning}
+            title={batchRunning ? 'Toplu analiz sürerken kullanılamaz' : undefined}
             onClick={() => void start(game, depth, { force: isThisGame && analyzedDepth === depth })}
             className="rounded-md bg-sky-600 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-40"
           >
@@ -52,11 +58,18 @@ export function AnalysisPanel() {
             <div className="h-full bg-sky-500 transition-[width] duration-300" style={{ width: `${pct}%` }} />
           </div>
           <p className="text-xs text-slate-400">
-            Hamle {current}/{total} analiz ediliyor… (derinlik {analyzedDepth})
+            {paused
+              ? 'Duraklatıldı: motor varyantı inceliyor. Ana hatta dönünce devam eder.'
+              : `Hamle ${current}/${total} analiz ediliyor… (derinlik ${analyzedDepth})`}
           </p>
         </div>
       )}
-      {done && <p className="text-xs text-emerald-400">Analiz tamamlandı (derinlik {analyzedDepth}).</p>}
+      {done && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-emerald-400">Analiz tamamlandı (derinlik {analyzedDepth}).</p>
+          <ExportButton />
+        </div>
+      )}
       {isThisGame && status === 'cancelled' && (
         <p className="text-xs text-amber-400">
           Analiz iptal edildi ({finishedCount}/{total + 1} pozisyon hazır).

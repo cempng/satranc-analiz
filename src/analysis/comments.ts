@@ -3,7 +3,7 @@ import { formatScore, uciLineToSan } from '../engine/uci';
 import { formatUciLine, withAccusative } from '../lib/notation';
 import { toTurkishSan, type PlyMove } from '../lib/pgn';
 import type { MoveClassification, PositionEval } from './classify';
-import { CLASSIFY, PIECE_VALUES } from './config';
+import { CLASSIFY, PIECE_VALUES, type ClassifyConfig } from './config';
 import { MOVE_CLASS_META, type MoveClass } from './moveClasses';
 import {
   castlingRights,
@@ -33,6 +33,7 @@ export interface CommentInput {
   before: PositionEval;
   after: PositionEval;
   openingName?: string;
+  config?: ClassifyConfig;
 }
 
 /** Bir devamda materyal kaybını değerlendirmek için bakılan yarım hamle sayısı. */
@@ -67,7 +68,7 @@ function headlineFor(input: CommentInput, bestSan?: string): string {
     case 'great': {
       const second = before.lines[1];
       const gap = second ? info.winBefore - winPctFor(second.score, move.color) : 0;
-      return gap >= CLASSIFY.great.minGapToSecond
+      return gap >= (input.config ?? CLASSIFY).great.minGapToSecond
         ? 'Harika hamle! Bu pozisyondaki tek iyi hamle.'
         : 'Harika hamle! Rakibin hatasını cezalandırarak oyunun gidişatını değiştiriyor.';
     }

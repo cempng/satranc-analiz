@@ -16,8 +16,20 @@ export const DEFAULT_DEPTH = 16;
 /** Taş değerleri (fedâ tespiti için). */
 export const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
-/** Hamle sınıflandırma eşikleri (Win% puanı cinsinden). */
-export const CLASSIFY = {
+/** Hamle sınıflandırma eşikleri (Win% puanı cinsinden). Ayarlar ekranından değiştirilebilir. */
+export interface ClassifyConfig {
+  excellentMaxLoss: number;
+  goodMaxLoss: number;
+  inaccuracyMaxLoss: number;
+  mistakeMaxLoss: number;
+  brilliant: { maxLoss: number; maxWinBefore: number; minWinAfter: number; minSacrifice: number };
+  great: { minGapToSecond: number; turningMaxWinBefore: number; turningMinWinAfter: number };
+  missed: { minBestWin: number; minLoss: number };
+  decided: { high: number; low: number };
+}
+
+/** Varsayılan sınıflandırma eşikleri. */
+export const CLASSIFY: ClassifyConfig = {
   /** kayıp < 2 → Mükemmel */
   excellentMaxLoss: 2,
   /** kayıp < 5 → İyi */
@@ -49,7 +61,7 @@ export const CLASSIFY = {
   },
   /** Bu sınırların dışında pozisyon zaten belli kabul edilir; hata sınıfı bir kademe yumuşatılır. */
   decided: { high: 97, low: 3 },
-} as const;
+};
 
 /** Hamle doğruluğu: a * exp(-k * kayıp) + b, 0–100 arası. */
 export const ACCURACY = {
@@ -67,3 +79,10 @@ export const PHASES = {
   /** Şah ve piyonlar hariç toplam taş değeri bu değere inince oyun sonu başlar (ör. her tarafta kale + fil + at = 11, toplam 22). */
   endgameMaxMaterial: 26,
 } as const;
+
+/** Alıştırma modunda bir hamlenin "doğru" sayılması için en iyi hamleye göre izin verilen en fazla Win% kaybı. */
+export const PRACTICE_TOLERANCE = 5;
+/** Alıştırmada motorun ilk 3 hamlesi dışındaki bir cevabı kontrol ederken kullanılan derinlik. */
+export const PRACTICE_CHECK_DEPTH = 14;
+/** Oyun sonu veritabanında sorgulanan en fazla taş sayısı (şahlar dahil). */
+export const TABLEBASE_MAX_PIECES = 7;

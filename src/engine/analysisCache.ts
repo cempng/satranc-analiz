@@ -21,9 +21,11 @@ export function hashString(text: string): string {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Önbellek anahtarı: oyunun pozisyonları + derinlik. Yorum/boşluk farkları anahtarı değiştirmez. */
-export function cacheKey(fens: string[], depth: number): string {
-  return `${hashString(`v${VERSION}|${depth}|${fens.join('|')}`)}-${fens.length}-${depth}`;
+/** Önbellek anahtarı: oyunun pozisyonları + derinlik + motor türü. Yorum/boşluk farkları anahtarı değiştirmez. */
+export function cacheKey(fens: string[], depth: number, engine = 'lite'): string {
+  const base = `${hashString(`v${VERSION}|${depth}|${fens.join('|')}`)}-${fens.length}-${depth}`;
+  // "lite" eski anahtarlarla uyumlu kalsın diye son eke eklenmez.
+  return engine === 'lite' ? base : `${base}-${engine}`;
 }
 
 function defaultStorage(): KeyValueStorage | null {

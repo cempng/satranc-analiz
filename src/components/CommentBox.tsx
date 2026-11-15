@@ -20,6 +20,7 @@ export function CommentBox() {
   const classification = useAnalysisStore((s) => s.classification);
   const running = useAnalysisStore((s) => s.status === 'running');
   const apiKey = useSettingsStore((s) => s.apiKey);
+  const thresholds = useSettingsStore((s) => s.thresholds);
   const openSettings = useSettingsStore((s) => s.setSettingsOpen);
 
   // Koç yorumları oyun başına hamle indeksine göre saklanır.
@@ -38,8 +39,8 @@ export function CommentBox() {
   const openingName = isThisGame ? classification?.openings[ply]?.name : undefined;
 
   const comment = useMemo(
-    () => (move && info && before && after ? buildComment({ move, info, before, after, openingName }) : null),
-    [move, info, before, after, openingName],
+    () => (move && info && before && after ? buildComment({ move, info, before, after, openingName, config: thresholds }) : null),
+    [move, info, before, after, openingName, thresholds],
   );
 
   if (!game || inVariant) return null;

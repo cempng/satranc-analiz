@@ -53,9 +53,12 @@ export function splitGames(text: string): string[] {
   return games.map((g) => g.trim()).filter(Boolean);
 }
 
+/** [Etiket "değer"] — genelde kendi satırındadır ama hamlelerle aynı satırda da olabilir. */
+const headerRegex = () => /\[(\w+)\s+"((?:[^"\\]|\\.)*)"\s*\]/g;
+
 function parseHeaders(text: string): Record<string, string> {
   const headers: Record<string, string> = {};
-  const re = /^\s*\[(\w+)\s+"((?:[^"\\]|\\.)*)"\s*\]\s*$/gm;
+  const re = headerRegex();
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) headers[m[1]] = m[2].replace(/\\(.)/g, '$1');
   return headers;
@@ -65,8 +68,9 @@ function parseHeaders(text: string): Record<string, string> {
 function tokenizeMoves(text: string): string[] {
   const body = text
     .split('\n')
-    .filter((l) => !l.trim().startsWith('[') && !l.trim().startsWith('%'))
-    .join(' ');
+    .filter((l) => !l.trim().startsWith('%'))
+    .join(' ')
+    .replace(headerRegex(), ' ');
 
   let out = '';
   let braceDepth = 0;

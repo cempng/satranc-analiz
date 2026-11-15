@@ -45,3 +45,12 @@ describe('PGN ayrıştırma', () => {
     expect(toTurkishSan('O-O-O')).toBe('O-O-O');
   });
 });
+
+describe('Aynı satırda başlık ve hamleler', () => {
+  it('başlık hamlelerle aynı satırda olsa da okunur; [%clk] yorumları bozulmaz', () => {
+    const { game, error } = parseGame('[FEN "8/8/8/4k3/8/8/4P3/4K3 w - - 0 1"] 1. Kd2 {[%clk 0:01:00]} Kd4 *');
+    expect(error).toBeUndefined();
+    expect(game!.headers.FEN).toBe('8/8/8/4k3/8/8/4P3/4K3 w - - 0 1');
+    expect(game!.moves.map((m) => m.san)).toEqual(['Kd2', 'Kd4']);
+  });
+});

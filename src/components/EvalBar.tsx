@@ -3,6 +3,7 @@ import { winPct } from '../analysis/winPct';
 import { formatScore, type Score } from '../engine/uci';
 import { useDisplayedAnalysis } from '../store/analysisStore';
 import { useGameStore } from '../store/gameStore';
+import { usePracticeStore } from '../store/practiceStore';
 
 /** Dikey değerlendirme çubuğu: beyaz kısmın yüksekliği beyazın kazanma olasılığıdır. */
 export function EvalBar() {
@@ -11,9 +12,11 @@ export function EvalBar() {
 
   // Yeni pozisyonun ilk sonucu gelene kadar önceki değeri göster (çubuk 50'ye zıplamasın).
   const lastScore = useRef<Score | null>(null);
+  // Alıştırmada değerlendirme cevabı ele vermesin diye gizlenir.
+  const practiceActive = usePracticeStore((s) => s.active);
   const fresh = analysis?.lines[0]?.score;
   if (fresh) lastScore.current = fresh;
-  const score = lastScore.current;
+  const score = practiceActive ? null : lastScore.current;
 
   const white = score ? winPct(score) : 50;
   const whiteAhead = white >= 50;

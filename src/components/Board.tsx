@@ -6,6 +6,8 @@ import type { MoveClass } from '../analysis/moveClasses';
 import { useAnalysisStore, useDisplayedAnalysis } from '../store/analysisStore';
 import { useEngineStore } from '../store/engineStore';
 import { useCurrentFen, useGameStore, useLastMove } from '../store/gameStore';
+import { usePracticeStore } from '../store/practiceStore';
+import { BOARD_THEMES, useSettingsStore } from '../store/settingsStore';
 import { MoveClassIcon } from './MoveClassIcon';
 
 const LAST_MOVE_STYLE = { backgroundColor: 'rgba(250, 204, 21, 0.38)' };
@@ -46,27 +48,59 @@ const BadgeSquare = forwardRef<HTMLDivElement, Omit<CustomSquareProps, 'ref'>>((
   );
 });
 
+const HINT_STYLE = { boxShadow: 'inset 0 0 0 4px rgba(56, 189, 248, 0.9)' };
+const WRONG_STYLE = { backgroundColor: 'rgba(239, 68, 68, 0.35)' };
+
 export function Board() {
   const [containerRef, width] = useContainerWidth();
   const game = useGameStore((s) => s.game);
   const ply = useGameStore((s) => s.ply);
-  const orientation = useGameStore((s) => s.orientation);
-  const fen = useCurrentFen();
+  const userOrientation = useGameStore((s) => s.orientation);
+  const mainFen = useCurrentFen();
   const analysis = useDisplayedAnalysis();
   const showBestArrow = useEngineStore((s) => s.showBestArrow);
   const analyzedGame = useAnalysisStore((s) => s.game);
   const classification = useAnalysisStore((s) => s.classification);
+  const theme = BOARD_THEMES[useSettingsStore((s) => s.boardTheme)];
+  const practice = usePracticeStore();
 
   const inVariant = useGameStore((s) => s.variant !== null);
   const playMove = useGameStore((s) => s.playMove);
   const lastMove = useLastMove();
-  const squareStyles = lastMove ? { [lastMove.from]: LAST_MOVE_STYLE, [lastMove.to]: LAST_MOVE_STYLE } : {};
-  // Rozet yalnızca ana hattaki (sınıflandırılmış) hamlelerde gösterilir.
-  const lastClass = !inVariant && lastMove && analyzedGame === game ? classification?.moves[ply - 1]?.cls : undefined;
 
+  const puzzle = practice.active ? practice.puzzles[practice.index] : undefined;
+  let fen = mainFen;
+  let orientation = userOrientation;
+  let squareStyles: Record<string, Record<string, string>> = lastMove
+    ? { [lastMove.from]: LAST_MOVE_STYLE, [lastMove.to]: LAST_MOVE_STYLE }
+    : {};
+  // Rozet yalnızca ana hattaki (sınıflandırılmış) hamlelerde gösterilir.
+  let lastClass = !inVariant && lastMove && analyzedGame === game ? classification?.moves[ply - 1]?.cls : undefined;
+  let arrows: [Square, Square, string][] = [];
   const best = analysis?.lines[0]?.pv[0];
-  const arrows: [Square, Square, string][] =
-    showBestArrow && best ? [[best.slice(0, 2) as Square, best.slice(2, 4) as Square, BEST_MOVE_ARROW_COLOR]] : [];
+  if (showBestArrow && best) arrows = [[best.slice(0, 2) as Square, best.slice(2, 4) as Square, BEST_MOVE_ARROW_COLOR]];
+
+  if (puzzle) {
+    // Alıştırma: bulmaca pozisyonu, hamle sırası olan taraftan bakılır; motor oku ve rozet gizlenir.
+    fen = practice.shownFen ?? puzzle.fen;
+    orientation = puzzle.color === 'w' ? 'white' : 'black';
+    lastClass = undefined;
+    arrows = [];
+    squareStyles = {};
+    if (practice.shownMove) {
+      squareStyles = { [practice.shownMove.from]: LAST_MOVE_STYLE, [practice.shownMove.to]: LAST_MOVE_STYLE };
+    }
+    if (practice.status === 'revealed') {
+      arrows = [[puzzle.solution.slice(0, 2) as Square, puzzle.solution.slice(2, 4) as Square, BEST_MOVE_ARROW_COLOR]];
+    }
+    if (practice.status === 'wrong') {
+      squareStyles = { [puzzle.played.from]: WRONG_STYLE, [puzzle.played.to]: WRONG_STYLE };
+    }
+    if (practice.hint && (practice.status === 'solving' || practice.status === 'wrong')) {
+      squareStyles = { ...squareStyles, [puzzle.solution.slice(0, 2)]: HINT_STYLE };
+    }
+  }
+  const draggable = !puzzle || practice.status === 'solving' || practice.status === 'wrong';
 
   const badgeSize = Math.max(16, Math.round(width / 8 / 2.6));
 
@@ -80,19 +114,20 @@ export function Board() {
             boardWidth={width}
             position={fen}
             boardOrientation={orientation}
-            arePiecesDraggable
+            arePiecesDraggable={draggable}
             onPieceDrop={(from, to, piece) => {
               // Terfi seçiminde parça "wQ" biçiminde gelir; normal hamlede terfi yok sayılır.
               const isPawnPromotion = piece[1] !== 'P' && /[18]$/.test(to) && new Chess(fen).get(from)?.type === 'p';
-              return playMove(from, to, isPawnPromotion ? piece[1].toLowerCase() : undefined);
+              const promotion = isPawnPromotion ? piece[1].toLowerCase() : undefined;
+              return puzzle ? practice.submit(from, to, promotion) : playMove(from, to, promotion);
             }}
             showBoardNotation
             animationDuration={150}
             customSquare={BadgeSquare as unknown as CustomSquareRenderer}
             customSquareStyles={squareStyles}
             customArrows={arrows}
-            customDarkSquareStyle={{ backgroundColor: '#5b7083' }}
-            customLightSquareStyle={{ backgroundColor: '#d9e1e8' }}
+            customDarkSquareStyle={{ backgroundColor: theme.dark }}
+            customLightSquareStyle={{ backgroundColor: theme.light }}
           />
         )}
       </BadgeContext.Provider>

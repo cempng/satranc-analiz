@@ -35,7 +35,13 @@ interface Job {
 export const MULTI_PV = 3;
 /** Mat bulunduktan sonra, mat uzunluğunun (yarım hamle) üstüne aranacak ek derinlik. */
 const MATE_EXTRA_DEPTH = 6;
-const ENGINE_URL = `${import.meta.env.BASE_URL}stockfish/stockfish-19-lite-single.js`;
+/** lite: küçük ağ (~1.8 MB), hızlı açılır. full: tam ağ (~100 MB), daha güçlü ama yavaş yüklenir. İkisi de tek iş parçacıklı. */
+export type EngineFlavor = 'lite' | 'full';
+const ENGINE_FILES: Record<EngineFlavor, string> = {
+  lite: 'stockfish-19-lite-single.js',
+  full: 'stockfish-19-single.js',
+};
+const engineUrl = (flavor: EngineFlavor) => `${import.meta.env.BASE_URL}stockfish/${ENGINE_FILES[flavor]}`;
 
 /**
  * Stockfish Web Worker'ı için UCI sarmalayıcı.
@@ -48,7 +54,7 @@ export class StockfishEngine {
   private pending: Job | null = null;
   private waiters: { token: string; resolve: () => void }[] = [];
 
-  constructor(url = ENGINE_URL) {
+  constructor(url = engineUrl('lite')) {
     this.worker = new Worker(url);
     this.worker.onmessage = (e: MessageEvent) => this.onLine(String(e.data));
     this.ready = new Promise<void>((resolve, reject) => {
@@ -100,6 +106,9 @@ export class StockfishEngine {
 
   terminate() {
     this.stop();
+    // Worker kapanınca "bestmove" gelmeyeceği için bekleyen istekleri boş sonuçla kapat.
+    this.current?.resolve(null);
+    this.current = null;
     this.worker.terminate();
   }
 
@@ -176,9 +185,23 @@ export class StockfishEngine {
 }
 
 let shared: StockfishEngine | null = null;
+let sharedFlavor: EngineFlavor = 'lite';
 
 /** Uygulama genelinde tek motor örneği. */
 export function getEngine(): StockfishEngine {
-  shared ??= new StockfishEngine();
+  shared ??= new StockfishEngine(engineUrl(sharedFlavor));
   return shared;
+}
+
+/** Motor türünü değiştirir; değiştiyse çalışan motor kapatılır (sonraki getEngine yenisini açar). */
+export function setEngineFlavor(flavor: EngineFlavor): boolean {
+  if (flavor === sharedFlavor) return false;
+  shared?.terminate();
+  shared = null;
+  sharedFlavor = flavor;
+  return true;
+}
+
+export function engineFlavor(): EngineFlavor {
+  return sharedFlavor;
 }

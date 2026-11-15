@@ -1,15 +1,21 @@
 import { DEPTH_OPTIONS } from '../analysis/config';
 import { formatScore } from '../engine/uci';
 import { formatUciLine } from '../lib/notation';
+import { TablebaseLine } from './TablebaseLine';
 import { useAnalysisStore, useDisplayedAnalysis } from '../store/analysisStore';
 import { useEngineStore } from '../store/engineStore';
-import { useCurrentFen } from '../store/gameStore';
+import { useCurrentFen, useGameStore } from '../store/gameStore';
+import { useSettingsStore } from '../store/settingsStore';
+import { useStatsStore } from '../store/statsStore';
 
 export function EnginePanel() {
   const fen = useCurrentFen();
   const { status, errorMessage, depth, setDepth, showBestArrow, toggleBestArrow } = useEngineStore();
   const current = useDisplayedAnalysis();
   const gameAnalysisRunning = useAnalysisStore((s) => s.status === 'running');
+  const inVariant = useGameStore((s) => s.variant !== null);
+  const flavor = useSettingsStore((s) => s.engine);
+  const batchRunning = useStatsStore((s) => s.status === 'running');
   // Oynanacak hamle yoksa motor yalnızca "mat 0" ya da "cp 0" (pat) döndürür.
   const gameOver = current?.done && !current.lines[0]?.pv.length;
   const mated = gameOver && current.lines[0]?.score.type === 'mate';
@@ -23,9 +29,9 @@ export function EnginePanel() {
               status === 'ready' ? 'bg-emerald-400' : status === 'error' ? 'bg-red-500' : 'animate-pulse bg-amber-400'
             }`}
           />
-          Stockfish 19
+          Stockfish 19 {flavor === 'full' ? 'tam' : 'lite'}
           <span className="font-normal text-slate-500">
-            {status === 'loading' && 'yükleniyor…'}
+            {status === 'loading' && (flavor === 'full' ? 'yükleniyor (~100 MB, biraz sürebilir)…' : 'yükleniyor…')}
             {status === 'ready' && current && !gameOver && `derinlik ${current.depth}/${current.targetDepth}`}
           </span>
         </h2>
@@ -52,6 +58,8 @@ export function EnginePanel() {
         </p>
       )}
 
+      <TablebaseLine />
+
       <ul className="space-y-1">
         {gameOver && (
           <li className="text-sm text-slate-300">{mated ? 'Mat – oyun bitti.' : 'Oynanacak hamle yok – oyun berabere bitti (pat).'}</li>
@@ -72,7 +80,11 @@ export function EnginePanel() {
         ))}
         {status === 'ready' && !current && (
           <li className="text-sm text-slate-500">
-            {gameAnalysisRunning ? 'Oyun analizi sürüyor; bu pozisyon analiz bitince hesaplanacak.' : 'Hesaplanıyor…'}
+            {batchRunning
+              ? 'Toplu analiz sürüyor; motor meşgul.'
+              : gameAnalysisRunning && !inVariant
+                ? 'Oyun analizi sürüyor; bu pozisyon analiz bitince hesaplanacak.'
+                : 'Hesaplanıyor…'}
           </li>
         )}
       </ul>
