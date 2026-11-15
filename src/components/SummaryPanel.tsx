@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { PHASE_LABELS, type GamePhase } from '../analysis/accuracy';
 import { MOVE_CLASS_META, MOVE_CLASS_ORDER } from '../analysis/moveClasses';
 import { summarizeGame } from '../analysis/summary';
-import { toTurkishSan } from '../lib/pgn';
+import { useT } from '../i18n/react';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useGameStore } from '../store/gameStore';
 import { MoveClassIcon } from './MoveClassIcon';
@@ -10,6 +10,7 @@ import { MoveClassIcon } from './MoveClassIcon';
 const fmt = (v?: number) => (v === undefined ? '–' : v.toFixed(1));
 
 export function SummaryPanel() {
+  const { t, san } = useT();
   const game = useGameStore((s) => s.game);
   const goTo = useGameStore((s) => s.goTo);
   const analyzedGame = useAnalysisStore((s) => s.game);
@@ -21,15 +22,15 @@ export function SummaryPanel() {
     [game, analyzedGame, classification],
   );
 
-  if (!game) return <p className="p-3 text-sm text-slate-400">Henüz oyun yüklenmedi.</p>;
-  if (!summary) return <p className="p-3 text-sm text-slate-400">Özet için oyunu analiz et.</p>;
+  if (!game) return <p className="p-3 text-sm text-slate-400">{t('common.noGame')}</p>;
+  if (!summary) return <p className="p-3 text-sm text-slate-400">{t('summary.needAnalysis')}</p>;
 
-  const names = { w: game.headers.White || 'Beyaz', b: game.headers.Black || 'Siyah' };
+  const names = { w: game.headers.White || t('common.white'), b: game.headers.Black || t('common.black') };
 
   return (
     <div className="space-y-4 p-1">
       {status === 'running' && (
-        <p className="text-xs text-amber-400">Analiz sürüyor; özet şimdilik analiz edilen hamlelere göre.</p>
+        <p className="text-xs text-amber-400">{t('summary.partial')}</p>
       )}
 
       {/* Doğruluk */}
@@ -45,7 +46,7 @@ export function SummaryPanel() {
             <div className="mt-1 text-3xl font-bold tabular-nums text-slate-100">
               {fmt(summary.accuracy[color].overall)}
             </div>
-            <div className="text-xs text-slate-500">doğruluk</div>
+            <div className="text-xs text-slate-500">{t('common.accuracy')}</div>
           </div>
         ))}
       </div>
@@ -54,9 +55,9 @@ export function SummaryPanel() {
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-slate-500">
-            <th className="py-1 text-left font-medium">Evre</th>
-            <th className="py-1 text-right font-medium">Beyaz</th>
-            <th className="py-1 text-right font-medium">Siyah</th>
+            <th className="py-1 text-left font-medium">{t('common.phase')}</th>
+            <th className="py-1 text-right font-medium">{t('common.white')}</th>
+            <th className="py-1 text-right font-medium">{t('common.black')}</th>
           </tr>
         </thead>
         <tbody>
@@ -74,9 +75,9 @@ export function SummaryPanel() {
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-slate-500">
-            <th className="py-1 text-left font-medium">Sınıf</th>
-            <th className="py-1 text-right font-medium">Beyaz</th>
-            <th className="py-1 text-right font-medium">Siyah</th>
+            <th className="py-1 text-left font-medium">{t('common.class')}</th>
+            <th className="py-1 text-right font-medium">{t('common.white')}</th>
+            <th className="py-1 text-right font-medium">{t('common.black')}</th>
           </tr>
         </thead>
         <tbody>
@@ -107,8 +108,8 @@ export function SummaryPanel() {
 
       {/* Kritik anlar */}
       <div className="space-y-1.5">
-        <h3 className="text-sm font-semibold text-slate-300">Kritik anlar</h3>
-        {summary.critical.length === 0 && <p className="text-xs text-slate-500">Belirgin bir hata ya da parlak hamle yok.</p>}
+        <h3 className="text-sm font-semibold text-slate-300">{t('summary.critical')}</h3>
+        {summary.critical.length === 0 && <p className="text-xs text-slate-500">{t('summary.noCritical')}</p>}
         {summary.critical.map((m) => {
           const move = game.moves[m.ply - 1];
           return (
@@ -121,7 +122,7 @@ export function SummaryPanel() {
               <MoveClassIcon cls={m.cls} size={18} />
               <span className="font-mono text-slate-100">
                 {move.moveNumber}
-                {move.color === 'w' ? '.' : '…'} {toTurkishSan(move.san)}
+                {move.color === 'w' ? '.' : '…'} {san(move.san)}
               </span>
               <span style={{ color: MOVE_CLASS_META[m.cls].color }}>{MOVE_CLASS_META[m.cls].label}</span>
               <span className="ml-auto text-xs text-slate-500">

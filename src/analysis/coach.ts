@@ -2,17 +2,10 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { MOVE_CLASS_META } from './moveClasses';
 import type { MoveComment } from './comments';
 import type { MoveClassification } from './classify';
-import { toTurkishSan, type PlyMove } from '../lib/pgn';
+import type { PlyMove } from '../lib/pgn';
+import { localSan, t } from '../i18n/core';
 
 export const COACH_MODEL = 'claude-opus-5-5';
-
-const SYSTEM_PROMPT = `Sen deneyimli ve sıcak bir satranç koçusun. Öğrencin bir oyununu analiz ediyor.
-Sana pozisyonu (FEN), oynanan hamleyi, hamlenin sınıfını ve Stockfish motorunun bulgularını vereceğim.
-Görevin: bu hamle hakkında Türkçe, 2-4 cümlelik doğal bir koç yorumu yazmak.
-- Hamlenin neden iyi ya da kötü olduğunu fikir düzeyinde açıkla (plan, taş aktivitesi, şah güvenliği, taktik motif).
-- Motorun verdiği bilgilerle çelişme; hamle ya da değerlendirme uydurma.
-- Türkçe satranç notasyonu kullan (Ş, V, K, F, A).
-- Başlık, madde işareti veya markdown kullanma; yalnızca düz metin yaz.`;
 
 export interface CoachInput {
   move: PlyMove;
@@ -21,15 +14,15 @@ export interface CoachInput {
 }
 
 function buildUserMessage({ move, info, comment }: CoachInput): string {
-  const side = move.color === 'w' ? 'Beyaz' : 'Siyah';
+  const side = t(move.color === 'w' ? 'common.white' : 'common.black');
   return [
-    `Hamleden önceki pozisyon (FEN): ${move.fenBefore}`,
-    `Oynanan hamle: ${move.moveNumber}${move.color === 'w' ? '.' : '...'} ${toTurkishSan(move.san)} (${side})`,
-    `Sınıf: ${MOVE_CLASS_META[info.cls].label}`,
-    `Kazanma şansı (${side} için): %${Math.round(info.winBefore)} → %${Math.round(info.winAfter)}`,
-    comment.evalChange ? `Değerlendirme (beyaz perspektifi): ${comment.evalChange}` : '',
+    t('coach.fen', { fen: move.fenBefore }),
+    t('coach.move', { move: `${move.moveNumber}${move.color === 'w' ? '.' : '...'} ${localSan(move.san)}`, side }),
+    t('coach.class', { cls: MOVE_CLASS_META[info.cls].label }),
+    t('coach.win', { side, before: Math.round(info.winBefore), after: Math.round(info.winAfter) }),
+    comment.evalChange ? t('coach.eval', { eval: comment.evalChange }) : '',
     comment.line ? `${comment.line.label}: ${comment.line.text}` : '',
-    `Kural tabanlı tespitler: ${[comment.headline, ...comment.details].join(' ')}`,
+    t('coach.findings', { text: [comment.headline, ...comment.details].join(' ') }),
   ]
     .filter(Boolean)
     .join('\n');
@@ -52,26 +45,26 @@ export async function fetchCoachComment(apiKey: string, input: CoachInput, signa
         // Güvenlik sınıflandırıcısı reddederse istek sunucu tarafında uygun bir modelle yeniden denenir.
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        system: SYSTEM_PROMPT,
+        system: t('coach.system'),
         messages: [{ role: 'user', content: buildUserMessage(input) }],
       },
       { signal },
     );
 
-    if (response.stop_reason === 'refusal') throw new Error('Model bu isteğe yanıt vermedi.');
+    if (response.stop_reason === 'refusal') throw new Error(t('coach.err.refusal'));
     const text = response.content
       .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('')
       .trim();
-    if (!text) throw new Error('Boş yanıt geldi.');
+    if (!text) throw new Error(t('coach.err.empty'));
     return text;
   } catch (error) {
-    if (error instanceof AnthropicClient.AuthenticationError) throw new Error('API anahtarı geçersiz.');
-    if (error instanceof AnthropicClient.PermissionDeniedError) throw new Error('Bu anahtarın modele erişim izni yok.');
-    if (error instanceof AnthropicClient.RateLimitError) throw new Error('İstek sınırına ulaşıldı, biraz sonra tekrar deneyin.');
-    if (error instanceof AnthropicClient.APIConnectionError) throw new Error('Bağlantı kurulamadı.');
-    if (error instanceof AnthropicClient.APIError) throw new Error(`API hatası (${error.status ?? '?'}).`);
+    if (error instanceof AnthropicClient.AuthenticationError) throw new Error(t('coach.err.auth'));
+    if (error instanceof AnthropicClient.PermissionDeniedError) throw new Error(t('coach.err.permission'));
+    if (error instanceof AnthropicClient.RateLimitError) throw new Error(t('coach.err.rate'));
+    if (error instanceof AnthropicClient.APIConnectionError) throw new Error(t('coach.err.connection'));
+    if (error instanceof AnthropicClient.APIError) throw new Error(t('coach.err.api', { status: error.status ?? '?' }));
     throw error;
   }
 }

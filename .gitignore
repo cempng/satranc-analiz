@@ -4,3 +4,7 @@ dist
 public/stockfish
 # Derleme sırasında otomatik oluşur
 *.tsbuildinfo
+# Hamle sesleri yalnızca yerelde: kaynağı/lisansı belirsiz olduğu için depoya ve siteye konmaz.
+# Sitede bunların yerine tarayıcıda üretilen yedek sesler çalar.
+/sounds/
+/public/sounds/

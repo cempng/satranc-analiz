@@ -1,3 +1,4 @@
+import { t } from '../i18n/core';
 import { parseGame, type Color, type ParsedGame } from '../lib/pgn';
 import { userColor, type OnlineGame } from '../lib/onlineGames';
 import type { GamePhase } from './accuracy';
@@ -71,7 +72,7 @@ export function computeGameStat(
   const classification = classifyGame(game, evals, book, config);
   const summary = summarizeGame(game, classification.moves);
   const named = [...classification.openings].reverse().find(Boolean);
-  const opening = named?.name ?? game.headers.Opening ?? 'Bilinmeyen açılış';
+  const opening = named?.name ?? game.headers.Opening ?? t('stats.unknownOpening');
   return {
     online,
     color,

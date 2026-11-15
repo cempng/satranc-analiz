@@ -4,6 +4,7 @@ import { MOVE_CLASS_META, type MoveClass } from '../analysis/moveClasses';
 import { aggregateStats } from '../analysis/stats';
 import { DEPTH_OPTIONS } from '../analysis/config';
 import { SITE_LABELS, speedLabel, type OnlineSite } from '../lib/onlineGames';
+import { useT } from '../i18n/react';
 import { useEngineStore } from '../store/engineStore';
 import { useGameStore } from '../store/gameStore';
 import { STATS_GAME_COUNTS, useStatsStore } from '../store/statsStore';
@@ -12,7 +13,7 @@ import { MoveClassIcon } from './MoveClassIcon';
 
 const fmt = (v?: number) => (v === undefined ? '–' : v.toFixed(1));
 const PER_GAME: MoveClass[] = ['brilliant', 'great', 'missed', 'inaccuracy', 'mistake', 'blunder'];
-const OUTCOME = { win: { label: 'G', cls: 'text-emerald-400' }, draw: { label: '½', cls: 'text-slate-400' }, loss: { label: 'M', cls: 'text-red-400' } };
+const OUTCOME_CLASS = { win: 'text-emerald-400', draw: 'text-slate-400', loss: 'text-red-400' };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -25,6 +26,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 /** Oyuncu istatistikleri: bir kullanıcının son oyunlarını toplu analiz eder ve özetler. */
 export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
+  const { t } = useT();
   const stats = useStatsStore();
   const engineReady = useEngineStore((s) => s.status === 'ready');
   const [site, setSite] = useState<OnlineSite>(stats.site);
@@ -46,7 +48,7 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-4">
-      <Card title="Oyuncu istatistikleri">
+      <Card title={t('stats.title')}>
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
@@ -55,7 +57,7 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
           }}
         >
           <label className="text-xs text-slate-400">
-            Site
+            {t('stats.site')}
             <select
               value={site}
               onChange={(e) => setSite(e.target.value as OnlineSite)}
@@ -69,7 +71,7 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
             </select>
           </label>
           <label className="min-w-40 flex-1 text-xs text-slate-400">
-            Kullanıcı adı
+            {t('stats.username')}
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -79,7 +81,7 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
             />
           </label>
           <label className="text-xs text-slate-400">
-            Oyun sayısı
+            {t('stats.count')}
             <select
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
@@ -87,13 +89,13 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
             >
               {STATS_GAME_COUNTS.map((n) => (
                 <option key={n} value={n}>
-                  Son {n}
+                  {t('stats.lastN', { n })}
                 </option>
               ))}
             </select>
           </label>
           <label className="text-xs text-slate-400">
-            Derinlik
+            {t('stats.depth')}
             <select
               value={depth}
               onChange={(e) => setDepth(Number(e.target.value))}
@@ -108,7 +110,7 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
           </label>
           {busy ? (
             <button type="button" onClick={stats.cancel} className="rounded-md bg-slate-700 px-4 py-1.5 text-sm hover:bg-slate-600">
-              İptal
+              {t('common.cancel')}
             </button>
           ) : (
             <button
@@ -116,33 +118,32 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
               disabled={!username.trim() || !engineReady}
               className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-40"
             >
-              Analiz et
+              {t('stats.run')}
             </button>
           )}
         </form>
         <p className="mt-2 text-xs text-slate-500">
-          Oyunlar tek tek motorla analiz edilir; oyun başına yaklaşık 20–60 saniye sürer (Hızlı 12). Daha önce analiz edilen
-          oyunlar önbellekten anında gelir. Analiz sürerken motor bu sayfaya ayrılır.
+          {t('stats.desc')}
         </p>
 
-        {stats.status === 'fetching' && <p className="mt-3 text-sm text-slate-300">Oyunlar getiriliyor…</p>}
+        {stats.status === 'fetching' && <p className="mt-3 text-sm text-slate-300">{t('stats.fetching')}</p>}
         {stats.status === 'running' && (
           <div className="mt-3 space-y-1">
             <div className="h-2 overflow-hidden rounded-full bg-slate-800">
               <div className="h-full bg-sky-500 transition-[width] duration-300" style={{ width: `${pct}%` }} />
             </div>
             <p className="text-xs text-slate-400">
-              Oyun {p.game}/{p.games}
-              {p.positions > 0 && ` · pozisyon ${p.position}/${p.positions}`}
+              {t('stats.progress', { game: p.game, games: p.games })}
+              {p.positions > 0 && t('stats.progressPos', { pos: p.position, positions: p.positions })}
             </p>
           </div>
         )}
         {stats.status === 'error' && <p className="mt-3 rounded-md bg-red-500/15 px-3 py-2 text-sm text-red-300">{stats.error}</p>}
-        {stats.status === 'cancelled' && <p className="mt-3 text-xs text-amber-400">İptal edildi. Analiz edilen oyunlar aşağıda.</p>}
+        {stats.status === 'cancelled' && <p className="mt-3 text-xs text-amber-400">{t('stats.cancelled')}</p>}
         {stats.status === 'done' && (
           <p className="mt-3 text-xs text-emerald-400">
-            Tamamlandı: {summary.games} oyun
-            {p.skipped > 0 && ` (${p.skipped} oyun atlandı: farklı varyant, bitmemiş ya da okunamayan oyun)`}.
+            {t('stats.done', { n: summary.games })}
+            {p.skipped > 0 && t('stats.skipped', { n: p.skipped })}.
           </p>
         )}
       </Card>
@@ -150,18 +151,18 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
       {summary.games > 0 && (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card title="Genel">
+            <Card title={t('stats.general')}>
               <div className="text-center">
                 <div className="text-4xl font-bold tabular-nums">{fmt(summary.accuracy)}</div>
-                <div className="text-xs text-slate-500">ortalama doğruluk · {summary.games} oyun</div>
+                <div className="text-xs text-slate-500">{t('stats.avgAccuracy', { n: summary.games })}</div>
                 <div className="mt-3 flex justify-center gap-4 text-sm">
-                  <span className="text-emerald-400">{summary.wins} galibiyet</span>
-                  <span className="text-slate-300">{summary.draws} beraberlik</span>
-                  <span className="text-red-400">{summary.losses} mağlubiyet</span>
+                  <span className="text-emerald-400">{t('stats.wins', { n: summary.wins })}</span>
+                  <span className="text-slate-300">{t('stats.draws', { n: summary.draws })}</span>
+                  <span className="text-red-400">{t('stats.losses', { n: summary.losses })}</span>
                 </div>
               </div>
             </Card>
-            <Card title="Evrelere göre doğruluk">
+            <Card title={t('stats.byPhase')}>
               <table className="w-full text-sm">
                 <tbody>
                   {(Object.keys(PHASE_LABELS) as GamePhase[]).map((ph) => (
@@ -173,7 +174,7 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
                 </tbody>
               </table>
             </Card>
-            <Card title="Oyun başına ortalama">
+            <Card title={t('stats.perGame')}>
               <table className="w-full text-sm">
                 <tbody>
                   {PER_GAME.map((c) => (
@@ -194,15 +195,15 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
             </Card>
           </div>
 
-          <Card title="Açılışlar">
+          <Card title={t('stats.openings')}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[420px] text-sm">
                 <thead>
                   <tr className="text-xs text-slate-500">
-                    <th className="py-1 text-left font-medium">Açılış</th>
-                    <th className="py-1 text-right font-medium">Oyun</th>
-                    <th className="py-1 text-right font-medium">Puan %</th>
-                    <th className="py-1 text-right font-medium">Doğruluk</th>
+                    <th className="py-1 text-left font-medium">{t('stats.opening')}</th>
+                    <th className="py-1 text-right font-medium">{t('stats.games')}</th>
+                    <th className="py-1 text-right font-medium">{t('stats.score')}</th>
+                    <th className="py-1 text-right font-medium capitalize">{t('common.accuracy')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -221,10 +222,10 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-slate-500">Puan %: galibiyet 1, beraberlik ½ sayılır. Kırmızı açılışlar üzerinde çalışmaya değer.</p>
+            <p className="mt-2 text-xs text-slate-500">{t('stats.scoreNote')}</p>
           </Card>
 
-          <Card title="Oyunlar">
+          <Card title={t('stats.gameList')}>
             <ul className="space-y-1">
               {stats.results.map((g) => (
                 <li key={g.online.id}>
@@ -232,9 +233,9 @@ export function StatsPage({ onOpenGame }: { onOpenGame: () => void }) {
                     type="button"
                     onClick={() => openGame(g.online.pgn)}
                     className="flex w-full items-center gap-3 rounded-md bg-slate-800/60 px-3 py-2 text-left text-sm hover:bg-slate-700"
-                    title="Bu oyunu analiz ekranında aç"
+                    title={t('stats.openGame')}
                   >
-                    <span className={`w-5 shrink-0 text-center font-bold ${OUTCOME[g.outcome].cls}`}>{OUTCOME[g.outcome].label}</span>
+                    <span className={`w-5 shrink-0 text-center font-bold ${OUTCOME_CLASS[g.outcome]}`}>{t(`stats.outcome.${g.outcome}`)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-slate-100">
                         {g.online.white} – {g.online.black}

@@ -1,3 +1,5 @@
+import { t } from '../i18n/core';
+
 /** Analizdeki tüm sabitler ve eşikler burada toplanır. */
 
 /** Win% formülü: 50 + 50 * (2 / (1 + exp(-K * cp)) - 1). */
@@ -7,9 +9,9 @@ export const WIN_PCT_CP_CLAMP = 1000;
 
 /** Motor derinlik seçenekleri. */
 export const DEPTH_OPTIONS = [
-  { label: 'Hızlı', depth: 12 },
-  { label: 'Normal', depth: 16 },
-  { label: 'Derin', depth: 20 },
+  { get label() { return t('depth.fast'); }, depth: 12 },
+  { get label() { return t('depth.normal'); }, depth: 16 },
+  { get label() { return t('depth.deep'); }, depth: 20 },
 ] as const;
 export const DEFAULT_DEPTH = 16;
 

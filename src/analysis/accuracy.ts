@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { t } from '../i18n/core';
 import type { Color, ParsedGame } from '../lib/pgn';
 import type { MoveClassification } from './classify';
 import { ACCURACY, PHASES, PIECE_VALUES } from './config';
@@ -20,10 +21,17 @@ export function aggregateAccuracy(accuracies: number[]): number | undefined {
 
 export type GamePhase = 'opening' | 'middlegame' | 'endgame';
 
+/** Evre adları (her okunuşta geçerli arayüz diline göre). */
 export const PHASE_LABELS: Record<GamePhase, string> = {
-  opening: 'Açılış',
-  middlegame: 'Oyun ortası',
-  endgame: 'Oyun sonu',
+  get opening() {
+    return t('phase.opening');
+  },
+  get middlegame() {
+    return t('phase.middlegame');
+  },
+  get endgame() {
+    return t('phase.endgame');
+  },
 };
 
 /** Şah ve piyonlar hariç tahtadaki toplam taş değeri. */

@@ -224,11 +224,13 @@ describe('Oyun sonu veritabanı ve sesler', () => {
     expect(bestTablebaseMove({ category: 'loss', moves })).toBe('Şe4');
   });
 
-  it('hamle sesi türü', () => {
-    expect(soundForSan('Rd8#')).toBe('mate');
-    expect(soundForSan('Bxb5+')).toBe('check');
-    expect(soundForSan('O-O-O')).toBe('castle');
-    expect(soundForSan('Nxe5')).toBe('capture');
-    expect(soundForSan('e4')).toBe('move');
+  it('hamle sesi türü (dosya adlarıyla)', () => {
+    expect(soundForSan('Rd8#', true)).toBe('move-check');
+    expect(soundForSan('Bxb5+', false)).toBe('move-check');
+    expect(soundForSan('exd8=Q', true)).toBe('promote');
+    expect(soundForSan('O-O-O', true)).toBe('castle');
+    expect(soundForSan('Nxe5', false)).toBe('capture');
+    expect(soundForSan('e4', true)).toBe('move-self');
+    expect(soundForSan('e5', false)).toBe('move-opponent');
   });
 });

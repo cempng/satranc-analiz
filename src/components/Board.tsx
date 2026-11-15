@@ -8,6 +8,7 @@ import { useEngineStore } from '../store/engineStore';
 import { useCurrentFen, useGameStore, useLastMove } from '../store/gameStore';
 import { usePracticeStore } from '../store/practiceStore';
 import { BOARD_THEMES, useSettingsStore } from '../store/settingsStore';
+import { playSound } from '../lib/sounds';
 import { MoveClassIcon } from './MoveClassIcon';
 
 const LAST_MOVE_STYLE = { backgroundColor: 'rgba(250, 204, 21, 0.38)' };
@@ -119,7 +120,11 @@ export function Board() {
               // Terfi seçiminde parça "wQ" biçiminde gelir; normal hamlede terfi yok sayılır.
               const isPawnPromotion = piece[1] !== 'P' && /[18]$/.test(to) && new Chess(fen).get(from)?.type === 'p';
               const promotion = isPawnPromotion ? piece[1].toLowerCase() : undefined;
-              return puzzle ? practice.submit(from, to, promotion) : playMove(from, to, promotion);
+              if (puzzle) return practice.submit(from, to, promotion);
+              const ok = playMove(from, to, promotion);
+              // Kurallara aykırı hamle (alıştırmadaki yanlış cevap sesi ayrıca çalınır).
+              if (!ok && from !== to && useSettingsStore.getState().sounds) playSound('illegal');
+              return ok;
             }}
             showBoardNotation
             animationDuration={150}

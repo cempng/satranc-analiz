@@ -1,8 +1,10 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { OPERA_GAME } from '../data/sampleGames';
+import { useT } from '../i18n/react';
 import { useGameStore } from '../store/gameStore';
 
 export function PgnInput({ onLoaded }: { onLoaded?: () => void }) {
+  const { t } = useT();
   const [text, setText] = useState('');
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -49,7 +51,7 @@ export function PgnInput({ onLoaded }: { onLoaded?: () => void }) {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="PGN metnini buraya yapıştırın ya da .pgn dosyasını sürükleyip bırakın…"
+        placeholder={t('pgn.placeholder')}
         spellCheck={false}
         className="h-32 w-full resize-y rounded-md bg-slate-950 p-2 font-mono text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
       />
@@ -59,14 +61,14 @@ export function PgnInput({ onLoaded }: { onLoaded?: () => void }) {
           onClick={() => load(text)}
           className="rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-500"
         >
-          Yükle
+          {t('pgn.load')}
         </button>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           className="rounded-md bg-slate-700 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-600"
         >
-          Dosya seç (.pgn)
+          {t('pgn.chooseFile')}
         </button>
         <button
           type="button"
@@ -76,7 +78,7 @@ export function PgnInput({ onLoaded }: { onLoaded?: () => void }) {
           }}
           className="rounded-md bg-slate-700 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-600"
         >
-          Örnek oyun yükle
+          {t('pgn.sample')}
         </button>
         <input
           ref={fileRef}
@@ -99,7 +101,7 @@ export function PgnInput({ onLoaded }: { onLoaded?: () => void }) {
 
       {candidates.length > 0 && (
         <div className="space-y-1">
-          <p className="text-sm text-slate-300">Dosyada {candidates.length} oyun var, birini seçin:</p>
+          <p className="text-sm text-slate-300">{t('pgn.multiple', { n: candidates.length })}</p>
           <ul className="max-h-56 space-y-1 overflow-y-auto">
             {candidates.map((c, i) => (
               <li key={i}>
@@ -117,7 +119,7 @@ export function PgnInput({ onLoaded }: { onLoaded?: () => void }) {
                   <span className="ml-2 text-xs text-slate-400">
                     {[c.headers.Result, c.headers.Date, c.headers.Event].filter(Boolean).join(' · ')}
                   </span>
-                  {c.error && <span className="block text-xs text-red-300">Hatalı: {c.error}</span>}
+                  {c.error && <span className="block text-xs text-red-300">{t('pgn.invalidPrefix', { error: c.error })}</span>}
                 </button>
               </li>
             ))}

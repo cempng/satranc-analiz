@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { CLASSIFY, type ClassifyConfig } from '../analysis/config';
 import type { EngineFlavor } from '../engine/stockfish';
+import { detectLang, setLang, t, type Lang } from '../i18n/core';
 
 export type { EngineFlavor };
 
@@ -10,14 +11,15 @@ const SETTINGS_STORAGE = 'satranc-analiz:settings';
 export type BoardTheme = 'mavi' | 'kahve' | 'yesil' | 'mor';
 
 export const BOARD_THEMES: Record<BoardTheme, { label: string; light: string; dark: string }> = {
-  mavi: { label: 'Mavi-gri', light: '#d9e1e8', dark: '#5b7083' },
-  kahve: { label: 'Ahşap', light: '#ecd9b9', dark: '#ae8a68' },
-  yesil: { label: 'Yeşil', light: '#e6ecd2', dark: '#6f9a5a' },
-  mor: { label: 'Mor', light: '#e4dcef', dark: '#8a72b0' },
+  mavi: { get label() { return t('theme.mavi'); }, light: '#d9e1e8', dark: '#5b7083' },
+  kahve: { get label() { return t('theme.kahve'); }, light: '#ecd9b9', dark: '#ae8a68' },
+  yesil: { get label() { return t('theme.yesil'); }, light: '#e6ecd2', dark: '#6f9a5a' },
+  mor: { get label() { return t('theme.mor'); }, light: '#e4dcef', dark: '#8a72b0' },
 };
 
 /** Tarayıcıda saklanan ayarlar. */
 export interface Settings {
+  language: Lang;
   boardTheme: BoardTheme;
   sounds: boolean;
   engine: EngineFlavor;
@@ -27,6 +29,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  language: 'tr',
   boardTheme: 'mavi',
   sounds: true,
   engine: 'lite',
@@ -48,6 +51,7 @@ export function mergeSettings(saved: unknown): Settings {
     ) as ClassifyConfig[K];
   };
   return {
+    language: s.language === 'en' || s.language === 'tr' ? s.language : DEFAULT_SETTINGS.language,
     boardTheme: s.boardTheme && s.boardTheme in BOARD_THEMES ? s.boardTheme : DEFAULT_SETTINGS.boardTheme,
     sounds: typeof s.sounds === 'boolean' ? s.sounds : DEFAULT_SETTINGS.sounds,
     engine: s.engine === 'full' ? 'full' : 'lite',
@@ -91,8 +95,17 @@ interface SettingsState extends Settings {
   update: (patch: Partial<Settings>) => void;
 }
 
+/** Kayıtlı ayarlar; dil seçilmemişse tarayıcı dilinden tahmin edilir. */
+function initialSettings(): Settings {
+  const saved = readJson(SETTINGS_STORAGE) as Partial<Settings> | null;
+  const merged = mergeSettings(saved);
+  if (!saved?.language) merged.language = detectLang();
+  setLang(merged.language);
+  return merged;
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  ...mergeSettings(readJson(SETTINGS_STORAGE)),
+  ...initialSettings(),
   apiKey: readKey(),
   settingsOpen: false,
   setApiKey: (key) => {
@@ -107,10 +120,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   update: (patch) => {
+    if (patch.language) setLang(patch.language);
     set(patch);
-    const { boardTheme, sounds, engine, tablebase, thresholds } = get();
+    const { language, boardTheme, sounds, engine, tablebase, thresholds } = get();
     try {
-      localStorage.setItem(SETTINGS_STORAGE, JSON.stringify({ boardTheme, sounds, engine, tablebase, thresholds }));
+      localStorage.setItem(SETTINGS_STORAGE, JSON.stringify({ language, boardTheme, sounds, engine, tablebase, thresholds }));
     } catch {
       /* depolama kapalıysa ayar yalnızca bu oturumda geçerli */
     }

@@ -1,3 +1,4 @@
+import { useT } from '../i18n/react';
 import { useGameStore } from '../store/gameStore';
 
 function NavButton({ label, title, onClick, disabled }: { label: string; title: string; onClick: () => void; disabled?: boolean }) {
@@ -16,6 +17,7 @@ function NavButton({ label, title, onClick, disabled }: { label: string; title: 
 }
 
 export function NavControls() {
+  const { t } = useT();
   const { game, ply, variant, first, prev, next, last, flip } = useGameStore();
   const total = game?.moves.length ?? 0;
   const atStart = !variant && ply === 0;
@@ -23,11 +25,11 @@ export function NavControls() {
 
   return (
     <div className="flex gap-2">
-      <NavButton label="⏮" title="Başa dön (Home)" onClick={first} disabled={atStart} />
-      <NavButton label="◀" title="Önceki hamle (←)" onClick={prev} disabled={atStart} />
-      <NavButton label="▶" title="Sonraki hamle (→)" onClick={next} disabled={atEnd} />
-      <NavButton label="⏭" title="Sona git (End)" onClick={last} disabled={!variant && ply >= total} />
-      <NavButton label="⇅" title="Tahtayı çevir (F)" onClick={flip} />
+      <NavButton label="⏮" title={t('navc.first')} onClick={first} disabled={atStart} />
+      <NavButton label="◀" title={t('navc.prev')} onClick={prev} disabled={atStart} />
+      <NavButton label="▶" title={t('navc.next')} onClick={next} disabled={atEnd} />
+      <NavButton label="⏭" title={t('navc.last')} onClick={last} disabled={!variant && ply >= total} />
+      <NavButton label="⇅" title={t('navc.flip')} onClick={flip} />
     </div>
   );
 }

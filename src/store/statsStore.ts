@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t } from '../i18n/core';
 import { loadOpeningBook } from '../analysis/openings';
 import { computeGameStat, prepareGame, type GameStat } from '../analysis/stats';
 import { cacheKey, loadCachedAnalysis, saveCachedAnalysis } from '../engine/analysisCache';
@@ -56,12 +57,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       online = await fetchOnlineGames(site, username, count, abort.signal);
     } catch (e) {
       if (id !== runId) return;
-      set({ status: 'error', error: e instanceof OnlineGamesError ? e.message : 'Oyunlar getirilemedi.' });
+      set({ status: 'error', error: e instanceof OnlineGamesError ? e.message : t('online.err.generic') });
       return;
     }
     if (id !== runId) return;
     if (online.length === 0) {
-      set({ status: 'error', error: 'Bu kullanıcının herkese açık oyunu bulunamadı.' });
+      set({ status: 'error', error: t('online.err.none') });
       return;
     }
 

@@ -1,9 +1,11 @@
 import { exportAnnotatedPgn, pgnFileName } from '../analysis/exportPgn';
 import { useAnalysisStore } from '../store/analysisStore';
+import { useT } from '../i18n/react';
 import { useGameStore } from '../store/gameStore';
 
 /** Analiz edilmiş oyunu sınıflar ve yorumlarla PGN dosyası olarak indirir. */
 export function ExportButton() {
+  const { t } = useT();
   const game = useGameStore((s) => s.game);
   const analyzedGame = useAnalysisStore((s) => s.game);
   const status = useAnalysisStore((s) => s.status);
@@ -25,9 +27,9 @@ export function ExportButton() {
       type="button"
       onClick={download}
       className="rounded-md bg-slate-700 px-3 py-1 text-xs text-slate-100 hover:bg-slate-600"
-      title="Sınıflar (!!, ?, ??), motor değerlendirmeleri ve kısa yorumlarla PGN dosyası"
+      title={t('export.title')}
     >
-      Analizli PGN indir
+      {t('export.button')}
     </button>
   );
 }

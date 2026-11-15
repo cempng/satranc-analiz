@@ -1,3 +1,5 @@
+import { t, type MessageKey } from '../i18n/core';
+
 /** Lichess ve Chess.com'un herkese açık API'lerinden bir oyuncunun son oyunlarını getirir (anahtar gerekmez). */
 
 export type OnlineSite = 'lichess' | 'chesscom';
@@ -40,7 +42,7 @@ export function parseLichessNdjson(text: string): OnlineGame[] {
       if (!g.pgn || (g.variant && g.variant !== 'standard' && g.variant !== 'fromPosition')) return [];
       const draw = g.status === 'draw' || g.status === 'stalemate';
       const result = g.winner ? RESULT_BY_WINNER[g.winner] : draw ? '1/2-1/2' : '*';
-      const name = (side: any) => side?.user?.name ?? (side?.aiLevel ? `Stockfish seviye ${side.aiLevel}` : 'Anonim');
+      const name = (side: any) => side?.user?.name ?? (side?.aiLevel ? t('online.ai', { level: side.aiLevel }) : t('online.anonymous'));
       return [
         {
           id: String(g.id),
@@ -77,8 +79,8 @@ export function parseChessComArchive(json: unknown): OnlineGame[] {
       site: 'chesscom' as const,
       url: g.url,
       pgn: String(g.pgn),
-      white: g.white?.username ?? 'Beyaz',
-      black: g.black?.username ?? 'Siyah',
+      white: g.white?.username ?? t('common.white'),
+      black: g.black?.username ?? t('common.black'),
       whiteElo: g.white?.rating,
       blackElo: g.black?.rating,
       result: resultOf(g),
@@ -90,7 +92,7 @@ export function parseChessComArchive(json: unknown): OnlineGame[] {
 
 function cleanUsername(username: string): string {
   const u = username.trim();
-  if (!/^[A-Za-z0-9_-]{2,30}$/.test(u)) throw new OnlineGamesError('Kullanıcı adı yalnızca harf, rakam, - ve _ içerebilir.');
+  if (!/^[A-Za-z0-9_-]{2,30}$/.test(u)) throw new OnlineGamesError(t('online.err.username'));
   return u;
 }
 
@@ -99,11 +101,11 @@ async function getOrThrow(url: string, init?: RequestInit): Promise<Response> {
   try {
     res = await fetch(url, init);
   } catch {
-    throw new OnlineGamesError('Siteye bağlanılamadı. İnternet bağlantını kontrol et.');
+    throw new OnlineGamesError(t('online.err.network'));
   }
-  if (res.status === 404) throw new OnlineGamesError('Bu kullanıcı adı bulunamadı.');
-  if (res.status === 429) throw new OnlineGamesError('Çok fazla istek gönderildi; bir dakika sonra tekrar dene.');
-  if (!res.ok) throw new OnlineGamesError(`Site hata döndürdü (${res.status}).`);
+  if (res.status === 404) throw new OnlineGamesError(t('online.err.notFound'));
+  if (res.status === 429) throw new OnlineGamesError(t('online.err.rateLimit'));
+  if (!res.ok) throw new OnlineGamesError(t('online.err.status', { status: res.status }));
   return res;
 }
 
@@ -142,16 +144,9 @@ export function userColor(game: Pick<OnlineGame, 'white' | 'black'>, username: s
   return undefined;
 }
 
-const SPEED_LABELS: Record<string, string> = {
-  ultraBullet: 'Ultra bullet',
-  bullet: 'Bullet',
-  blitz: 'Blitz',
-  rapid: 'Rapid',
-  classical: 'Klasik',
-  correspondence: 'Yazışmalı',
-  daily: 'Günlük',
-};
+const SPEEDS = ['ultraBullet', 'bullet', 'blitz', 'rapid', 'classical', 'correspondence', 'daily'];
 
 export function speedLabel(speed?: string): string {
-  return speed ? (SPEED_LABELS[speed] ?? speed) : '';
+  if (!speed) return '';
+  return SPEEDS.includes(speed) ? t(`speed.${speed}` as MessageKey) : speed;
 }

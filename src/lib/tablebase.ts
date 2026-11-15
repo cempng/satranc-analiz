@@ -1,6 +1,6 @@
 import { fenTurn } from '../engine/uci';
 import { TABLEBASE_MAX_PIECES } from '../analysis/config';
-import { toTurkishSan } from './pgn';
+import { localSan, t } from '../i18n/core';
 
 /** lichess oyun sonu veritabanı (Syzygy) yanıtının kullandığımız kısmı. Kategoriler sırası gelen tarafa göredir. */
 export interface TablebaseResult {
@@ -36,23 +36,23 @@ export async function fetchTablebase(fen: string, signal?: AbortSignal): Promise
 const WIN = ['win', 'syzygy-win', 'maybe-win'];
 const LOSS = ['loss', 'syzygy-loss', 'maybe-loss'];
 
-/** Sonucu Türkçe cümleye çevirir: "Beyaz kazanır (mat 12 hamlede)", "Berabere" … */
+/** Sonucu arayüz dilinde cümleye çevirir: "Beyaz kazanır (mat 12 hamlede)", "Berabere" … */
 export function describeTablebase(result: TablebaseResult, fen: string): string {
   const turn = fenTurn(fen);
-  const mover = turn === 'w' ? 'Beyaz' : 'Siyah';
-  const other = turn === 'w' ? 'Siyah' : 'Beyaz';
-  const mateIn = result.dtm ? ` (mat ${Math.ceil(Math.abs(result.dtm) / 2)} hamlede)` : '';
+  const mover = t(turn === 'w' ? 'common.white' : 'common.black');
+  const other = t(turn === 'w' ? 'common.black' : 'common.white');
+  const mateIn = result.dtm ? t('tablebase.mateIn', { n: Math.ceil(Math.abs(result.dtm) / 2) }) : '';
   const c = result.category;
-  if (WIN.includes(c)) return `${mover} kazanır${mateIn}`;
-  if (LOSS.includes(c)) return `${other} kazanır${mateIn}`;
-  if (c === 'cursed-win') return `${mover} kazanıyor gibi, ama 50 hamle kuralı nedeniyle berabere`;
-  if (c === 'blessed-loss') return `${other} kazanıyor gibi, ama 50 hamle kuralı nedeniyle berabere`;
-  if (c === 'draw') return 'Berabere';
-  return 'Sonuç bilinmiyor';
+  if (WIN.includes(c)) return t('tablebase.wins', { side: mover }) + mateIn;
+  if (LOSS.includes(c)) return t('tablebase.wins', { side: other }) + mateIn;
+  if (c === 'cursed-win') return t('tablebase.cursed', { side: mover });
+  if (c === 'blessed-loss') return t('tablebase.cursed', { side: other });
+  if (c === 'draw') return t('tablebase.draw');
+  return t('tablebase.unknown');
 }
 
-/** En iyi hamle (Türkçe notasyon); oynanacak hamle yoksa undefined. */
+/** En iyi hamle (arayüz dilinin notasyonuyla); oynanacak hamle yoksa undefined. */
 export function bestTablebaseMove(result: TablebaseResult): string | undefined {
   const m = result.moves[0];
-  return m ? toTurkishSan(m.san) : undefined;
+  return m ? localSan(m.san) : undefined;
 }

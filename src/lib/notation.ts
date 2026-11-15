@@ -1,8 +1,8 @@
 import { fenTurn, uciLineToSan } from '../engine/uci';
-import { toTurkishSan } from './pgn';
+import { getLang, localSan, type Lang } from '../i18n/core';
 
-/** Pozisyondan başlayarak SAN listesini "12. Fxf7+ Şxf7 13. …" biçiminde (Türkçe harflerle) yazar. */
-export function formatLine(fen: string, san: string[]): string {
+/** Pozisyondan başlayarak SAN listesini "12. Fxf7+ Şxf7 13. …" biçiminde (arayüz dilinin taş harfleriyle) yazar. */
+export function formatLine(fen: string, san: string[], lang: Lang = getLang()): string {
   let moveNumber = Number(fen.split(' ')[5]) || 1;
   let turn = fenTurn(fen);
   return san
@@ -12,14 +12,14 @@ export function formatLine(fen: string, san: string[]): string {
       else if (i === 0) prefix = `${moveNumber}… `;
       if (turn === 'b') moveNumber++;
       turn = turn === 'w' ? 'b' : 'w';
-      return prefix + toTurkishSan(m);
+      return prefix + localSan(m, lang);
     })
     .join(' ');
 }
 
-/** UCI çizgisini doğrudan Türkçe numaralı metne çevirir. */
-export function formatUciLine(fen: string, pv: string[], plies: number): string {
-  return formatLine(fen, uciLineToSan(fen, pv, plies));
+/** UCI çizgisini doğrudan numaralı metne çevirir. */
+export function formatUciLine(fen: string, pv: string[], plies: number, lang: Lang = getLang()): string {
+  return formatLine(fen, uciLineToSan(fen, pv, plies), lang);
 }
 
 const DIGIT_SUFFIX = ['', 'i', 'yi', 'ü', 'ü', 'i', 'yı', 'yi', 'i', 'u'];

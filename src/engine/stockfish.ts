@@ -58,7 +58,7 @@ export class StockfishEngine {
     this.worker = new Worker(url);
     this.worker.onmessage = (e: MessageEvent) => this.onLine(String(e.data));
     this.ready = new Promise<void>((resolve, reject) => {
-      this.worker.onerror = (e) => reject(new Error(e.message || 'Motor yüklenemedi'));
+      this.worker.onerror = (e) => reject(new Error(e.message || 'Stockfish worker failed to load'));
       this.send('uci');
       this.waitFor('uciok')
         .then(() => {

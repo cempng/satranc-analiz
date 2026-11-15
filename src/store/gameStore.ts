@@ -1,5 +1,6 @@
 import { Chess, DEFAULT_POSITION } from 'chess.js';
 import { create } from 'zustand';
+import { t } from '../i18n/core';
 import { parsePgn, type GameParseResult, type ParsedGame, type PlyMove } from '../lib/pgn';
 
 /** Ana hattan ayrılan, kullanıcının tahtada oynadığı hamleler. */
@@ -57,18 +58,18 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   loadPgnText: (text) => {
     if (!text.trim()) {
-      set({ error: 'Lütfen bir PGN yapıştırın veya dosya yükleyin.' });
+      set({ error: t('pgn.empty') });
       return;
     }
     const results = parsePgn(text);
     if (results.length === 0) {
-      set({ candidates: [], error: 'Metinde oyun bulunamadı.' });
+      set({ candidates: [], error: t('pgn.noGames') });
       return;
     }
     if (results.length === 1) {
       const [r] = results;
       if (r.game) set({ candidates: [], game: r.game, error: null, ply: 0, variant: null });
-      else set({ candidates: [], error: r.error ?? 'PGN okunamadı.' });
+      else set({ candidates: [], error: r.error ?? t('pgn.unreadable') });
       return;
     }
     set({ candidates: results, error: null });
@@ -78,7 +79,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const r = get().candidates[index];
     if (!r) return;
     if (r.game) set({ game: r.game, error: null, ply: 0, candidates: [], variant: null });
-    else set({ error: r.error ?? 'PGN okunamadı.' });
+    else set({ error: r.error ?? t('pgn.unreadable') });
   },
 
   goTo: (ply) => {

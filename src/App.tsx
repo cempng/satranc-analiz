@@ -1,4 +1,4 @@
-import { Chess, type Square } from 'chess.js';
+import { Chess } from 'chess.js';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { Board } from './components/Board';
@@ -15,7 +15,9 @@ import { StatsPage } from './components/StatsPage';
 import { SummaryPanel } from './components/SummaryPanel';
 import { VariantPanel } from './components/VariantPanel';
 import { useLiveAnalysis } from './engine/useLiveAnalysis';
-import { playMoveSound, soundForSan } from './lib/sounds';
+import { useT } from './i18n/react';
+import type { PlyMove } from './lib/pgn';
+import { playSound, preloadSounds, soundForSan } from './lib/sounds';
 import { useAnalysisStore } from './store/analysisStore';
 import { useEngineStore } from './store/engineStore';
 import { useCurrentFen, useGameStore } from './store/gameStore';
@@ -66,25 +68,52 @@ function useAutoAnalyze() {
   }, [game, engineReady, batchRunning]);
 }
 
-/** İleri yönde oynanan her hamlede (ana hat, varyant, alıştırma) ses çalar. */
+/**
+ * Sesler: ileri yönde oynanan her hamlede (ana hat, varyant, alıştırma) hamle sesi;
+ * yeni oyun yüklenince "game-start", bitmiş bir oyunun son hamlesine gelince "game-end",
+ * alıştırmada yanlış cevapta "illegal".
+ */
 function useMoveSounds() {
   useEffect(() => {
+    preloadSounds(['move-self', 'move-opponent', 'capture', 'castle', 'move-check', 'promote', 'game-start', 'game-end', 'illegal']);
+    const enabled = () => useSettingsStore.getState().sounds;
+    // Tahtanın alt tarafındaki oyuncunun hamlesi "kendi" hamlesi sayılır.
+    const isSelf = (color: 'w' | 'b') => color === (useGameStore.getState().orientation === 'white' ? 'w' : 'b');
+
     const unsubGame = useGameStore.subscribe((s, prev) => {
-      if (!useSettingsStore.getState().sounds) return;
-      let san: string | undefined;
-      if (s.variant && s.variant.index > 0 && s.variant.index > (prev.variant?.index ?? 0)) {
-        san = s.variant.moves[s.variant.index - 1].san;
-      } else if (!s.variant && !prev.variant && s.game === prev.game && s.ply === prev.ply + 1) {
-        san = s.game?.moves[s.ply - 1]?.san;
+      if (!enabled()) return;
+      if (s.game && s.game !== prev.game) {
+        playSound('game-start');
+        return;
       }
-      if (san) playMoveSound(soundForSan(san));
+      let move: PlyMove | undefined;
+      let finished = false;
+      if (s.variant && s.variant.index > 0 && s.variant.index > (prev.variant?.index ?? 0)) {
+        move = s.variant.moves[s.variant.index - 1];
+      } else if (s.game && !s.variant && !prev.variant && s.game === prev.game && s.ply === prev.ply + 1) {
+        move = s.game.moves[s.ply - 1];
+        finished = s.ply === s.game.moves.length && ['1-0', '0-1', '1/2-1/2'].includes(s.game.headers.Result ?? '');
+      }
+      if (!move) return;
+      playSound(soundForSan(move.san, isSelf(move.color)));
+      if (finished) playSound('game-end', 0.25);
     });
+
     const unsubPractice = usePracticeStore.subscribe((s, prev) => {
-      if (!useSettingsStore.getState().sounds || !s.shownMove || s.shownMove === prev.shownMove) return;
+      if (!enabled() || s.status === prev.status) return;
       const puzzle = s.puzzles[s.index];
       if (!puzzle) return;
-      const captured = new Chess(puzzle.fen).get(s.shownMove.to as Square);
-      playMoveSound(captured ? 'capture' : 'move');
+      if (s.status === 'wrong') {
+        playSound('illegal');
+      } else if (s.shownMove && (s.status === 'correct' || s.status === 'revealed' || s.status === 'checking')) {
+        const chess = new Chess(puzzle.fen);
+        try {
+          const move = chess.move({ from: s.shownMove.from, to: s.shownMove.to, promotion: 'q' });
+          playSound(soundForSan(move.san, true));
+        } catch {
+          playSound('move-self');
+        }
+      }
     });
     return () => {
       unsubGame();
@@ -97,6 +126,7 @@ function useMoveSounds() {
 const EvalChart = lazy(() => import('./components/EvalChart').then((m) => ({ default: m.EvalChart })));
 
 export default function App() {
+  const { t } = useT();
   const [view, setView] = useState<View>('analysis');
   useKeyboardNavigation(view === 'analysis');
   useLiveAnalysis(useCurrentFen());
@@ -119,13 +149,13 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="flex items-center gap-3 border-b border-slate-800 px-4 py-3">
         <h1 className="text-lg font-bold tracking-tight">
-          <span className="text-sky-400">♞</span> <span className="hidden sm:inline">Satranç Analiz</span>
+          <span className="text-sky-400">♞</span> <span className="hidden sm:inline">{t('app.title')}</span>
         </h1>
-        <nav className="flex gap-1 rounded-md bg-slate-900 p-0.5" aria-label="Sayfa">
+        <nav className="flex gap-1 rounded-md bg-slate-900 p-0.5" aria-label={t('nav.page')}>
           {(
             [
-              ['analysis', 'Analiz'],
-              ['stats', 'İstatistik'],
+              ['analysis', t('nav.analysis')],
+              ['stats', t('nav.stats')],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -147,7 +177,7 @@ export default function App() {
           onClick={() => setSettingsOpen(true)}
           className="ml-auto rounded-md px-2.5 py-1 text-sm text-slate-300 hover:bg-slate-800"
         >
-          ⚙ Ayarlar
+          {t('nav.settings')}
         </button>
       </header>
       <SettingsDialog />
@@ -171,7 +201,7 @@ export default function App() {
                   <EvalChart />
                 </Suspense>
                 <p className="hidden text-center text-xs text-slate-500 sm:block">
-                  Klavye: ← → hamle · Home / End başa / sona · F tahtayı çevir · Taşları sürükleyerek varyant dene
+                  {t('keyboard.hint')}
                 </p>
               </>
             )}
@@ -188,14 +218,14 @@ export default function App() {
               <>
                 <div className="rounded-lg bg-slate-900 p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-slate-300">Oyun</h2>
+                    <h2 className="text-sm font-semibold text-slate-300">{t('source.title')}</h2>
                     {game && (
                       <button
                         type="button"
                         onClick={() => setShowInput((v) => !v)}
                         className="text-xs text-sky-400 hover:text-sky-300"
                       >
-                        {inputVisible ? 'Gizle' : 'Yeni oyun yükle'}
+                        {inputVisible ? t('common.hide') : t('source.newGame')}
                       </button>
                     )}
                   </div>
@@ -216,8 +246,8 @@ export default function App() {
                   <div className="mb-2 flex gap-1 rounded-md bg-slate-800 p-0.5" role="tablist">
                     {(
                       [
-                        ['moves', 'Hamleler'],
-                        ['summary', 'Özet'],
+                        ['moves', t('moves.title')],
+                        ['summary', t('summary.title')],
                       ] as const
                     ).map(([id, label]) => (
                       <button

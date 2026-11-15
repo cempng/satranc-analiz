@@ -1,4 +1,5 @@
 import { Chess, DEFAULT_POSITION, type Square } from 'chess.js';
+import { t } from '../i18n/core';
 
 export type Color = 'w' | 'b';
 
@@ -125,7 +126,7 @@ export function parseGame(raw: string): GameParseResult {
   try {
     chess.load(startFen);
   } catch {
-    return { headers, error: `[FEN] etiketindeki pozisyon geçersiz: "${startFen}"` };
+    return { headers, error: t('pgn.badFen', { fen: startFen }) };
   }
 
   const tokens = tokenizeMoves(stripLineComments(raw));
@@ -143,12 +144,9 @@ export function parseGame(raw: string): GameParseResult {
       move = null;
     }
     if (!move) {
-      const side = color === 'w' ? 'Beyaz' : 'Siyah';
+      const side = t(color === 'w' ? 'common.white' : 'common.black');
       const prefix = color === 'w' ? `${moveNumber}.` : `${moveNumber}...`;
-      return {
-        headers,
-        error: `${moveNumber}. hamlede sorun var (${side}): "${prefix} ${token}" bu pozisyonda geçerli bir hamle değil.`,
-      };
+      return { headers, error: t('pgn.badMove', { n: moveNumber, side, move: `${prefix} ${token}` }) };
     }
     moves.push({
       san: move.san,
@@ -163,7 +161,7 @@ export function parseGame(raw: string): GameParseResult {
   }
 
   if (moves.length === 0 && !headers.FEN) {
-    return { headers, error: 'PGN içinde hiç hamle bulunamadı.' };
+    return { headers, error: t('pgn.noMoves') };
   }
 
   return { headers, game: { headers, startFen, moves, raw } };
@@ -174,10 +172,5 @@ export function parsePgn(text: string): GameParseResult[] {
   return splitGames(text).map(parseGame);
 }
 
-const TR_PIECES: Record<string, string> = { K: 'Ş', Q: 'V', R: 'K', B: 'F', N: 'A' };
-
 /** İngilizce SAN'ı Türkçe taş harflerine çevirir (N→A, B→F, R→K, Q→V, K→Ş). */
-export function toTurkishSan(san: string): string {
-  if (san.startsWith('O-O')) return san;
-  return san.replace(/[KQRBN]/g, (p) => TR_PIECES[p]);
-}
+export { toTurkishSan } from '../i18n/core';

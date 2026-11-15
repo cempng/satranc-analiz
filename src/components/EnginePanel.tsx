@@ -4,11 +4,13 @@ import { formatUciLine } from '../lib/notation';
 import { TablebaseLine } from './TablebaseLine';
 import { useAnalysisStore, useDisplayedAnalysis } from '../store/analysisStore';
 import { useEngineStore } from '../store/engineStore';
+import { useT } from '../i18n/react';
 import { useCurrentFen, useGameStore } from '../store/gameStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useStatsStore } from '../store/statsStore';
 
 export function EnginePanel() {
+  const { t } = useT();
   const fen = useCurrentFen();
   const { status, errorMessage, depth, setDepth, showBestArrow, toggleBestArrow } = useEngineStore();
   const current = useDisplayedAnalysis();
@@ -29,13 +31,13 @@ export function EnginePanel() {
               status === 'ready' ? 'bg-emerald-400' : status === 'error' ? 'bg-red-500' : 'animate-pulse bg-amber-400'
             }`}
           />
-          Stockfish 19 {flavor === 'full' ? 'tam' : 'lite'}
+          Stockfish 19 {t(flavor === 'full' ? 'engine.full' : 'engine.lite')}
           <span className="font-normal text-slate-500">
-            {status === 'loading' && (flavor === 'full' ? 'yükleniyor (~100 MB, biraz sürebilir)…' : 'yükleniyor…')}
-            {status === 'ready' && current && !gameOver && `derinlik ${current.depth}/${current.targetDepth}`}
+            {status === 'loading' && t(flavor === 'full' ? 'engine.loadingFull' : 'engine.loading')}
+            {status === 'ready' && current && !gameOver && t('engine.depthProgress', { depth: current.depth, target: current.targetDepth })}
           </span>
         </h2>
-        <div className="flex items-center gap-1 rounded-md bg-slate-800 p-0.5" role="group" aria-label="Derinlik">
+        <div className="flex items-center gap-1 rounded-md bg-slate-800 p-0.5" role="group" aria-label={t('engine.depth')}>
           {DEPTH_OPTIONS.map((o) => (
             <button
               key={o.depth}
@@ -54,7 +56,7 @@ export function EnginePanel() {
 
       {status === 'error' && (
         <p className="rounded-md bg-red-500/15 px-3 py-2 text-sm text-red-300">
-          Motor başlatılamadı: {errorMessage}
+          {t('engine.error', { message: errorMessage ?? '' })}
         </p>
       )}
 
@@ -62,7 +64,7 @@ export function EnginePanel() {
 
       <ul className="space-y-1">
         {gameOver && (
-          <li className="text-sm text-slate-300">{mated ? 'Mat – oyun bitti.' : 'Oynanacak hamle yok – oyun berabere bitti (pat).'}</li>
+          <li className="text-sm text-slate-300">{t(mated ? 'engine.mate' : 'engine.stalemate')}</li>
         )}
         {!gameOver && (current?.lines ?? []).map((line) => (
           <li key={line.multipv} className="flex items-start gap-2 text-sm">
@@ -81,17 +83,17 @@ export function EnginePanel() {
         {status === 'ready' && !current && (
           <li className="text-sm text-slate-500">
             {batchRunning
-              ? 'Toplu analiz sürüyor; motor meşgul.'
+              ? t('engine.batchBusy')
               : gameAnalysisRunning && !inVariant
-                ? 'Oyun analizi sürüyor; bu pozisyon analiz bitince hesaplanacak.'
-                : 'Hesaplanıyor…'}
+                ? t('engine.waiting')
+                : t('engine.thinking')}
           </li>
         )}
       </ul>
 
       <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400 select-none">
         <input type="checkbox" checked={showBestArrow} onChange={toggleBestArrow} className="accent-emerald-500" />
-        En iyi hamleyi yeşil okla göster
+        {t('engine.arrow')}
       </label>
     </div>
   );

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchCoachComment } from '../analysis/coach';
 import { buildComment } from '../analysis/comments';
 import { MOVE_CLASS_META } from '../analysis/moveClasses';
-import { toTurkishSan } from '../lib/pgn';
+import { useT } from '../i18n/react';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useGameStore } from '../store/gameStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -12,6 +12,7 @@ type CoachState = { status: 'loading' } | { status: 'done'; text: string } | { s
 
 /** Ekrandaki hamle için yorum kutusu: kural tabanlı yorum + isteğe bağlı koç yorumu. */
 export function CommentBox() {
+  const { t, san, lang } = useT();
   const game = useGameStore((s) => s.game);
   const ply = useGameStore((s) => s.ply);
   const inVariant = useGameStore((s) => s.variant !== null);
@@ -29,7 +30,7 @@ export function CommentBox() {
   useEffect(() => {
     setCoach({});
     return () => abortRef.current?.abort();
-  }, [game]);
+  }, [game, lang]);
 
   const isThisGame = game !== null && analyzedGame === game;
   const move = game && ply > 0 ? game.moves[ply - 1] : undefined;
@@ -39,22 +40,22 @@ export function CommentBox() {
   const openingName = isThisGame ? classification?.openings[ply]?.name : undefined;
 
   const comment = useMemo(
-    () => (move && info && before && after ? buildComment({ move, info, before, after, openingName, config: thresholds }) : null),
-    [move, info, before, after, openingName, thresholds],
+    () => (move && info && before && after ? buildComment({ move, info, before, after, openingName, config: thresholds, lang }) : null),
+    [move, info, before, after, openingName, thresholds, lang],
   );
 
   if (!game || inVariant) return null;
   if (!move) {
     return (
       <div className="rounded-lg bg-slate-900 p-3 text-sm text-slate-400">
-        Başlangıç pozisyonu. Hamleler arasında gezinerek her hamlenin yorumunu görebilirsin.
+        {t('comment.start')}
       </div>
     );
   }
   if (!info || !comment) {
     return (
       <div className="rounded-lg bg-slate-900 p-3 text-sm text-slate-400">
-        {running ? 'Bu hamle henüz analiz edilmedi…' : 'Yorum için oyunu analiz et.'}
+        {t(running ? 'comment.pending' : 'comment.analyzeFirst')}
       </div>
     );
   }
@@ -83,13 +84,13 @@ export function CommentBox() {
         <MoveClassIcon cls={info.cls} size={22} />
         <span className="font-mono font-semibold text-slate-100">
           {move.moveNumber}
-          {move.color === 'w' ? '.' : '…'} {toTurkishSan(move.san)}
+          {move.color === 'w' ? '.' : '…'} {san(move.san)}
         </span>
         <span className="font-semibold" style={{ color: meta.color }}>
           {meta.label}
         </span>
         {comment.evalChange && (
-          <span className="ml-auto font-mono text-xs text-slate-400" title="Değerlendirme (beyaz perspektifi)">
+          <span className="ml-auto font-mono text-xs text-slate-400" title={t('comment.evalTitle')}>
             {comment.evalChange}
           </span>
         )}
@@ -110,8 +111,8 @@ export function CommentBox() {
         </p>
       )}
       <p className="text-xs text-slate-500">
-        Kazanma şansı: %{Math.round(info.winBefore)} → %{Math.round(info.winAfter)}
-        {info.loss >= 0.5 && ` (kayıp ${info.loss.toFixed(1)})`}
+        {t('comment.winChance', { before: Math.round(info.winBefore), after: Math.round(info.winAfter) })}
+        {info.loss >= 0.5 && t('comment.loss', { loss: info.loss.toFixed(1) })}
       </p>
 
       <div className="border-t border-slate-800 pt-2">
@@ -119,7 +120,7 @@ export function CommentBox() {
           <>
             {coachState?.status === 'done' ? (
               <p className="rounded-md bg-sky-500/10 p-2.5 text-sm leading-relaxed text-sky-100">
-                <span className="font-semibold text-sky-300">Koç: </span>
+                <span className="font-semibold text-sky-300">{t('comment.coach')}</span>
                 {coachState.text}
               </p>
             ) : (
@@ -129,14 +130,14 @@ export function CommentBox() {
                 disabled={coachState?.status === 'loading'}
                 className="rounded-md bg-sky-700 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600 disabled:opacity-60"
               >
-                {coachState?.status === 'loading' ? 'Koç düşünüyor…' : 'Koç yorumu al'}
+                {t(coachState?.status === 'loading' ? 'comment.coachThinking' : 'comment.coachAsk')}
               </button>
             )}
             {coachState?.status === 'error' && <p className="mt-1 text-xs text-red-300">{coachState.message}</p>}
           </>
         ) : (
           <button type="button" onClick={() => openSettings(true)} className="text-xs text-slate-500 hover:text-sky-400">
-            Daha doğal bir koç yorumu için Ayarlar’dan API anahtarı ekleyebilirsin.
+            {t('comment.coachHint')}
           </button>
         )}
       </div>

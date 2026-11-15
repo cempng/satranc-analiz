@@ -2,16 +2,6 @@ import { Chess, type PieceSymbol, type Square } from 'chess.js';
 import type { Color } from '../lib/pgn';
 import { PIECE_VALUES } from './config';
 
-/** Taş adları ve hâlleri. */
-export const PIECE_NAMES: Record<PieceSymbol, { nom: string; acc: string; dat: string }> = {
-  p: { nom: 'piyon', acc: 'piyonu', dat: 'piyona' },
-  n: { nom: 'at', acc: 'atı', dat: 'ata' },
-  b: { nom: 'fil', acc: 'fili', dat: 'file' },
-  r: { nom: 'kale', acc: 'kaleyi', dat: 'kaleye' },
-  q: { nom: 'vezir', acc: 'veziri', dat: 'vezire' },
-  k: { nom: 'şah', acc: 'şahı', dat: 'şaha' },
-};
-
 const FILES = 'abcdefgh';
 
 interface BoardPiece {

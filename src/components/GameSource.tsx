@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { fetchOnlineGames, OnlineGamesError, SITE_LABELS, speedLabel, type OnlineGame, type OnlineSite } from '../lib/onlineGames';
+import { getLang } from '../i18n/core';
+import { useT } from '../i18n/react';
 import { useGameStore } from '../store/gameStore';
 import { PgnInput } from './PgnInput';
 
@@ -25,10 +27,12 @@ function saveUsername(site: OnlineSite, name: string) {
 }
 
 export function formatDate(ms?: number): string {
-  return ms ? new Date(ms).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const locale = getLang() === 'tr' ? 'tr-TR' : 'en-GB';
+  return ms ? new Date(ms).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
 function OnlineImport({ site, onLoaded }: { site: OnlineSite; onLoaded?: () => void }) {
+  const { t } = useT();
   const [username, setUsername] = useState(() => readUsername(site));
   const [games, setGames] = useState<OnlineGame[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,9 +51,9 @@ function OnlineImport({ site, onLoaded }: { site: OnlineSite; onLoaded?: () => v
       const list = await fetchOnlineGames(site, username, IMPORT_COUNT, controller.signal);
       saveUsername(site, username.trim());
       setGames(list);
-      if (list.length === 0) setError('Bu kullanıcının herkese açık oyunu bulunamadı.');
+      if (list.length === 0) setError(t('online.err.none'));
     } catch (e) {
-      if (!controller.signal.aborted) setError(e instanceof OnlineGamesError ? e.message : 'Oyunlar getirilemedi.');
+      if (!controller.signal.aborted) setError(e instanceof OnlineGamesError ? e.message : t('online.err.generic'));
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -69,7 +73,7 @@ function OnlineImport({ site, onLoaded }: { site: OnlineSite; onLoaded?: () => v
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder={`${SITE_LABELS[site]} kullanıcı adı`}
+          placeholder={t('online.username', { site: SITE_LABELS[site] })}
           autoComplete="off"
           spellCheck={false}
           className="min-w-0 flex-1 rounded-md bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -79,11 +83,11 @@ function OnlineImport({ site, onLoaded }: { site: OnlineSite; onLoaded?: () => v
           disabled={!username.trim() || loading}
           className="rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-40"
         >
-          {loading ? 'Getiriliyor…' : 'Oyunları getir'}
+          {t(loading ? 'online.fetching' : 'online.fetch')}
         </button>
       </form>
       <p className="text-xs text-slate-500">
-        Son {IMPORT_COUNT} herkese açık oyun {SITE_LABELS[site]}’ten getirilir. Giriş ya da şifre gerekmez.
+        {t('online.hint', { n: IMPORT_COUNT, site: SITE_LABELS[site] })}
       </p>
       {error && <p className="rounded-md bg-red-500/15 px-3 py-2 text-sm text-red-300">{error}</p>}
       {games && games.length > 0 && (
@@ -105,9 +109,9 @@ function OnlineImport({ site, onLoaded }: { site: OnlineSite; onLoaded?: () => v
                 >
                   <span
                     className={`w-6 shrink-0 text-center text-xs font-bold ${won ? 'text-emerald-400' : lost ? 'text-red-400' : 'text-slate-400'}`}
-                    title={won ? 'Kazandın' : lost ? 'Kaybettin' : 'Berabere / bitmedi'}
+                    title={t(won ? 'online.won' : lost ? 'online.lost' : 'online.drawn')}
                   >
-                    {won ? 'G' : lost ? 'M' : '½'}
+                    {won ? t('online.winShort') : lost ? t('online.lossShort') : '½'}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-slate-100">
@@ -129,6 +133,7 @@ function OnlineImport({ site, onLoaded }: { site: OnlineSite; onLoaded?: () => v
 
 /** Oyun kaynağı: PGN yapıştır/yükle, ya da Lichess / Chess.com kullanıcı adıyla getir. */
 export function GameSource({ onLoaded }: { onLoaded?: () => void }) {
+  const { t } = useT();
   const [source, setSource] = useState<Source>('pgn');
   const tabs: [Source, string][] = [
     ['pgn', 'PGN'],
@@ -137,7 +142,7 @@ export function GameSource({ onLoaded }: { onLoaded?: () => void }) {
   ];
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-md bg-slate-800 p-0.5" role="tablist" aria-label="Oyun kaynağı">
+      <div className="flex gap-1 rounded-md bg-slate-800 p-0.5" role="tablist" aria-label={t('source.tabs')}>
         {tabs.map(([id, label]) => (
           <button
             key={id}

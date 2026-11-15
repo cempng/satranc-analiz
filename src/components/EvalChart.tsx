@@ -3,7 +3,7 @@ import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YA
 import { MOVE_CLASS_META, type MoveClass } from '../analysis/moveClasses';
 import { winPct } from '../analysis/winPct';
 import { formatScore } from '../engine/uci';
-import { toTurkishSan } from '../lib/pgn';
+import { useT } from '../i18n/react';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useGameStore } from '../store/gameStore';
 
@@ -21,6 +21,7 @@ interface Point {
 
 /** Değerlendirme grafiği: x = hamle, y = beyazın kazanma olasılığı. Tıklanan hamleye gider. */
 export function EvalChart() {
+  const { t, san, lang } = useT();
   const game = useGameStore((s) => s.game);
   const ply = useGameStore((s) => s.ply);
   const goTo = useGameStore((s) => s.goTo);
@@ -36,17 +37,17 @@ export function EvalChart() {
       return {
         ply: i,
         win: score ? winPct(score) : undefined,
-        label: move ? `${move.moveNumber}${move.color === 'w' ? '.' : '…'} ${toTurkishSan(move.san)}` : 'Başlangıç',
+        label: move ? `${move.moveNumber}${move.color === 'w' ? '.' : '…'} ${san(move.san)}` : t('common.start'),
         evalText: score ? formatScore(score, 1) : undefined,
         cls: i > 0 ? classification?.moves[i - 1]?.cls : undefined,
       };
     });
-  }, [game, analyzedGame, evals, classification]);
+  }, [game, analyzedGame, evals, classification, lang]);
 
   if (!game || data.every((d) => d.win === undefined)) return null;
 
   return (
-    <div className="h-28 w-full rounded-lg bg-slate-900 p-1 sm:h-32" aria-label="Değerlendirme grafiği">
+    <div className="h-28 w-full rounded-lg bg-slate-900 p-1 sm:h-32" aria-label={t('chart.label')}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}

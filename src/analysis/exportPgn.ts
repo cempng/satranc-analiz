@@ -1,5 +1,6 @@
 import { uciLineToSan, type Score } from '../engine/uci';
 import type { ParsedGame } from '../lib/pgn';
+import { t } from '../i18n/core';
 import { gameAccuracy } from './accuracy';
 import type { MoveClassification, PositionEval } from './classify';
 import { MOVE_CLASS_META, type MoveClass } from './moveClasses';
@@ -46,14 +47,14 @@ function wrap(tokens: string[], width = 80): string {
 }
 
 /**
- * Oyunu sınıflar (NAG), motor değerlendirmesi ([%eval]) ve kısa Türkçe yorumlarla PGN olarak yazar.
+ * Oyunu sınıflar (NAG), motor değerlendirmesi ([%eval]) ve arayüz dilindeki kısa yorumlarla PGN olarak yazar.
  * Hamleler, diğer programlarla uyum için İngilizce notasyonda kalır.
  */
 export function exportAnnotatedPgn(
   game: ParsedGame,
   classes: (MoveClassification | undefined)[],
   evals: (PositionEval | undefined)[],
-  annotator = 'Satranç Analiz (Stockfish 19)',
+  annotator = `${t('app.title')} (Stockfish 19)`,
 ): string {
   const accuracy = gameAccuracy(game, classes);
   const headers: Record<string, string> = { ...game.headers, Result: game.headers.Result ?? '*', Annotator: annotator };

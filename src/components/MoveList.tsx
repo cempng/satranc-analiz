@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { toTurkishSan, type PlyMove } from '../lib/pgn';
+import { useT } from '../i18n/react';
+import type { PlyMove } from '../lib/pgn';
 import { useAnalysisStore } from '../store/analysisStore';
 import { useGameStore } from '../store/gameStore';
 import { MoveClassIcon } from './MoveClassIcon';
@@ -30,13 +31,25 @@ export function MoveList() {
   const analyzedGame = useAnalysisStore((s) => s.game);
   const classification = useAnalysisStore((s) => s.classification);
   const classes = analyzedGame === game ? classification?.moves : undefined;
+  const { t, san } = useT();
   const activeRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
+  // Etkin hamleyi görünür tut: yalnızca listenin kendi içi kaydırılır, sayfa kaymaz
+  // (scrollIntoView tüm sayfayı da kaydırıyordu).
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest' });
+    const list = listRef.current;
+    const active = activeRef.current;
+    if (!list || !active) return;
+    // Ekrandaki konumlara göre hesapla (düğme tablo hücresinin içinde olduğu için offsetTop güvenilmez).
+    const header = list.querySelector('thead')?.getBoundingClientRect().height ?? 0;
+    const box = list.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    if (item.top < box.top + header) list.scrollTop -= box.top + header - item.top;
+    else if (item.bottom > box.bottom) list.scrollTop += item.bottom - box.bottom;
   }, [ply]);
 
-  if (!game) return <p className="p-4 text-sm text-slate-400">Henüz oyun yüklenmedi.</p>;
+  if (!game) return <p className="p-4 text-sm text-slate-400">{t('common.noGame')}</p>;
 
   const rows = buildRows(game.moves);
 
@@ -58,20 +71,20 @@ export function MoveList() {
           ) : (
             <span className="inline-block w-[15px]" />
           )}
-          {toTurkishSan(entry.move.san)}
+          {san(entry.move.san)}
         </span>
       </button>
     );
   };
 
   return (
-    <div className="max-h-80 overflow-y-auto lg:max-h-[420px]">
+    <div ref={listRef} className="max-h-80 overflow-y-auto lg:max-h-[420px]">
       <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
           <tr>
             <th className="w-10 py-1 text-left font-medium">#</th>
-            <th className="py-1 text-left font-medium">Beyaz</th>
-            <th className="py-1 text-left font-medium">Siyah</th>
+            <th className="py-1 text-left font-medium">{t('common.white')}</th>
+            <th className="py-1 text-left font-medium">{t('common.black')}</th>
           </tr>
         </thead>
         <tbody>

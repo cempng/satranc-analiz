@@ -4,7 +4,7 @@ import { PRACTICE_CHECK_DEPTH, PRACTICE_TOLERANCE } from '../analysis/config';
 import { buildPuzzles, judgeFromLines, judgeFromScore, type Puzzle, type PuzzleFilter, type Verdict } from '../analysis/practice';
 import { getEngine } from '../engine/stockfish';
 import { uciLineToSan, type Score } from '../engine/uci';
-import { toTurkishSan } from '../lib/pgn';
+import { localSan, t } from '../i18n/core';
 import { useAnalysisStore } from './analysisStore';
 import { useGameStore } from './gameStore';
 
@@ -40,7 +40,7 @@ let checkId = 0;
 const fresh = { status: 'solving' as const, message: '', shownFen: null, shownMove: null, hint: false, attempts: 0 };
 
 function sanOf(fen: string, uci: string): string {
-  return toTurkishSan(uciLineToSan(fen, [uci])[0] ?? uci);
+  return localSan(uciLineToSan(fen, [uci])[0] ?? uci);
 }
 
 export const usePracticeStore = create<PracticeState>((set, get) => {
@@ -54,16 +54,14 @@ export const usePracticeStore = create<PracticeState>((set, get) => {
         shownFen: fenAfter,
         shownMove: { from, to },
         solvedFirstTry: get().solvedFirstTry + (firstTry ? 1 : 0),
-        message: verdict.best
-          ? 'Doğru! Motorun en iyi hamlesini buldun.'
-          : `Doğru! Bu da iyi bir hamle. Motorun ilk tercihi ${sanOf(p.fen, p.solution)} idi.`,
+        message: verdict.best ? t('practice.correctBest') : t('practice.correctAlt', { move: sanOf(p.fen, p.solution) }),
       });
     } else if (verdict.kind === 'wrong') {
       set({
         status: 'wrong',
         shownFen: null,
         shownMove: null,
-        message: `Bu hamle iyi değil: kazanma şansın yaklaşık %${Math.round(verdict.loss)} düşüyor. Tekrar dene.`,
+        message: t('practice.wrong', { loss: Math.round(verdict.loss) }),
       });
     }
   };
@@ -117,13 +115,13 @@ export const usePracticeStore = create<PracticeState>((set, get) => {
 
       // Motorun ilk 3 hamlesi dışında: pozisyonu motorla kontrol et.
       const id = ++checkId;
-      set({ status: 'checking', shownFen: fenAfter, shownMove: { from, to }, message: 'Hamlen kontrol ediliyor…' });
+      set({ status: 'checking', shownFen: fenAfter, shownMove: { from, to }, message: t('practice.checking') });
       void getEngine()
         .analyze(fenAfter, PRACTICE_CHECK_DEPTH)
         .then((result) => {
           if (id !== checkId) return;
           if (!result) {
-            set({ status: 'solving', shownFen: null, shownMove: null, message: 'Kontrol edilemedi, tekrar dene.' });
+            set({ status: 'solving', shownFen: null, shownMove: null, message: t('practice.checkFailed') });
             return;
           }
           const score: Score = result.lines[0]?.score ?? { type: 'cp', cp: 0 };
@@ -144,7 +142,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => {
         status: 'revealed',
         shownFen: chess.fen(),
         shownMove: { from: p.solution.slice(0, 2), to: p.solution.slice(2, 4) },
-        message: `Çözüm: ${sanOf(p.fen, p.solution)}.`,
+        message: t('practice.solution', { move: sanOf(p.fen, p.solution) }),
       });
     },
 

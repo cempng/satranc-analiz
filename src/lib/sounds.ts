@@ -1,8 +1,21 @@
-/** Hamle sesleri: dosya kullanmadan Web Audio ile üretilen kısa, özgün sesler. */
+/**
+ * Hamle sesleri: public/sounds/*.mp3 dosyaları Web Audio ile çalınır.
+ * Dosya yüklenemezse (ör. silinmişse) tarayıcıda üretilen kısa yedek ses kullanılır.
+ */
 
-export type MoveSound = 'move' | 'capture' | 'check' | 'castle' | 'mate';
+export type MoveSound =
+  | 'move-self'
+  | 'move-opponent'
+  | 'capture'
+  | 'castle'
+  | 'move-check'
+  | 'promote'
+  | 'game-start'
+  | 'game-end'
+  | 'illegal';
 
 let ctx: AudioContext | null = null;
+const buffers = new Map<MoveSound, Promise<AudioBuffer | null>>();
 
 function audio(): AudioContext | null {
   try {
@@ -14,7 +27,19 @@ function audio(): AudioContext | null {
   }
 }
 
-/** Ahşap "tık" sesi: kısa gürültü patlaması + düşük frekanslı ton. */
+function load(ac: AudioContext, kind: MoveSound): Promise<AudioBuffer | null> {
+  let p = buffers.get(kind);
+  if (!p) {
+    p = fetch(`${import.meta.env.BASE_URL}sounds/${kind}.mp3`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data) => ac.decodeAudioData(data))
+      .catch(() => null);
+    buffers.set(kind, p);
+  }
+  return p;
+}
+
+/** Ahşap "tık" sesi (yedek): kısa gürültü patlaması + düşük frekanslı ton. */
 function knock(ac: AudioContext, at: number, freq: number, volume: number, length = 0.09) {
   const noise = ac.createBuffer(1, Math.floor(ac.sampleRate * length), ac.sampleRate);
   const data = noise.getChannelData(0);
@@ -43,7 +68,7 @@ function knock(ac: AudioContext, at: number, freq: number, volume: number, lengt
   osc.stop(at + length);
 }
 
-/** Kısa uyarı tonu (şah için). */
+/** Kısa ton (yedek). */
 function chime(ac: AudioContext, at: number, freq: number, volume: number) {
   const osc = ac.createOscillator();
   osc.type = 'triangle';
@@ -57,14 +82,8 @@ function chime(ac: AudioContext, at: number, freq: number, volume: number) {
   osc.stop(at + 0.2);
 }
 
-export function playMoveSound(kind: MoveSound) {
-  const ac = audio();
-  if (!ac) return;
-  const t = ac.currentTime + 0.005;
+function fallback(ac: AudioContext, kind: MoveSound, t: number) {
   switch (kind) {
-    case 'move':
-      knock(ac, t, 220, 0.5);
-      break;
     case 'capture':
       knock(ac, t, 160, 0.7, 0.12);
       knock(ac, t + 0.045, 120, 0.45, 0.1);
@@ -73,23 +92,54 @@ export function playMoveSound(kind: MoveSound) {
       knock(ac, t, 220, 0.45);
       knock(ac, t + 0.09, 240, 0.45);
       break;
-    case 'check':
+    case 'move-check':
       knock(ac, t, 200, 0.5);
       chime(ac, t + 0.02, 880, 0.12);
       break;
-    case 'mate':
-      knock(ac, t, 180, 0.6);
-      chime(ac, t + 0.02, 660, 0.12);
-      chime(ac, t + 0.16, 494, 0.12);
+    case 'game-start':
+    case 'game-end':
+      chime(ac, t, 660, 0.12);
+      chime(ac, t + 0.14, kind === 'game-end' ? 494 : 880, 0.12);
       break;
+    case 'illegal':
+      chime(ac, t, 180, 0.15);
+      break;
+    default:
+      knock(ac, t, kind === 'move-opponent' ? 190 : 220, 0.5);
   }
 }
 
-/** SAN'dan ses türü: "Rd8#" → mate, "Bxb5+" → check, "O-O" → castle, "Nxe5" → capture. */
-export function soundForSan(san: string): MoveSound {
-  if (san.includes('#')) return 'mate';
-  if (san.includes('+')) return 'check';
+/** Ses dosyalarını önceden indirir (ilk hamlede gecikme olmasın). */
+export function preloadSounds(kinds: MoveSound[]) {
+  const ac = audio();
+  if (ac) kinds.forEach((k) => void load(ac, k));
+}
+
+/** Sesi çalar; `delay` saniye sonra başlatılabilir. */
+export function playSound(kind: MoveSound, delay = 0) {
+  const ac = audio();
+  if (!ac) return;
+  void load(ac, kind).then((buffer) => {
+    const at = ac.currentTime + 0.005 + delay;
+    if (!buffer) {
+      fallback(ac, kind, at);
+      return;
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ac.destination);
+    src.start(at);
+  });
+}
+
+/**
+ * SAN'a göre ses: "Rd8#"/"Bxb5+" → şah, "e8=Q" → terfi, "O-O" → rok, "Nxe5" → taş alma;
+ * aksi halde tahtanın alt tarafındaki oyuncunun hamlesi "move-self", rakibinki "move-opponent".
+ */
+export function soundForSan(san: string, self: boolean): MoveSound {
+  if (san.includes('+') || san.includes('#')) return 'move-check';
+  if (san.includes('=')) return 'promote';
   if (san.startsWith('O-O')) return 'castle';
   if (san.includes('x')) return 'capture';
-  return 'move';
+  return self ? 'move-self' : 'move-opponent';
 }

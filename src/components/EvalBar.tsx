@@ -2,11 +2,13 @@ import { useRef } from 'react';
 import { winPct } from '../analysis/winPct';
 import { formatScore, type Score } from '../engine/uci';
 import { useDisplayedAnalysis } from '../store/analysisStore';
+import { useT } from '../i18n/react';
 import { useGameStore } from '../store/gameStore';
 import { usePracticeStore } from '../store/practiceStore';
 
 /** Dikey değerlendirme çubuğu: beyaz kısmın yüksekliği beyazın kazanma olasılığıdır. */
 export function EvalBar() {
+  const { t } = useT();
   const analysis = useDisplayedAnalysis();
   const orientation = useGameStore((s) => s.orientation);
 
@@ -26,7 +28,7 @@ export function EvalBar() {
   return (
     <div
       className={`relative flex w-6 shrink-0 overflow-hidden rounded bg-slate-700 sm:w-7 ${flipped ? 'flex-col' : 'flex-col-reverse'}`}
-      title={score ? `Değerlendirme: ${formatScore(score)}` : 'Motor hesaplıyor…'}
+      title={score ? t('evalbar.title', { score: formatScore(score) }) : t('evalbar.thinking')}
     >
       <div className="bg-slate-100 transition-[height] duration-300 ease-out" style={{ height: `${white}%` }} />
       <div className="flex-1 bg-slate-800" />

@@ -43,7 +43,8 @@ Sonra tarayıcıda `http://localhost:5173` adresini aç.
 - **Oyun sonu veritabanı:** 7 veya daha az taş kalınca lichess’in Syzygy veritabanından kesin sonuç ve en iyi hamle gösterilir (Ayarlar’dan kapatılabilir).
 - **İstatistik sayfası:** bir kullanıcının son 5–30 oyununu toplu analiz eder: ortalama doğruluk, evrelere göre doğruluk, oyun başına hata sayıları, açılışlara göre puan ve doğruluk.
 - **Ayarlar:**
-  - Tahta teması ve hamle sesleri (sesler dosya kullanmadan tarayıcıda üretilir).
+  - **Dil / Language:** Türkçe ya da İngilizce. İlk açılışta tarayıcı diline göre seçilir; notasyon da dile uyar (Türkçe: Ş V K F A, İngilizce: K Q R B N).
+  - Tahta teması ve hamle sesleri (isteğe bağlı `public/sounds/*.mp3` dosyaları: `move-self`, `move-opponent`, `capture`, `castle`, `move-check`, `promote`, `game-start`, `game-end`, `illegal`; bu klasör depoya konmaz, dosya yoksa tarayıcıda üretilen yedek sesler çalar).
   - Motor: **lite** (~2 MB, varsayılan) ya da **tam** (~100 MB, daha güçlü ama yavaş yüklenir).
   - **Sınıflandırma eşikleri:** Brillant, Harika, Kaçırılan Fırsat ve kayıp sınırlarını değiştirebilirsin; tüm hamleler anında yeniden sınıflandırılır.
   - **Koç yorumu (isteğe bağlı):** bir Anthropic API anahtarı girersen her hamle için Claude’dan doğal dilde yorum alabilirsin. Anahtar yalnızca tarayıcında saklanır ve yalnızca Anthropic’e gönderilir; her istek hesabından ücretlendirilir.
@@ -101,6 +102,7 @@ PGN metni ──► lib/pgn.ts (ayrıştırma, hata mesajları)
 | `src/analysis` | Saf fonksiyonlar: Win% (`winPct.ts`), sınıflandırma (`classify.ts`), feda tespiti, doğruluk, taktik tespitleri, yorumlar, özet, alıştırma bulmacaları (`practice.ts`), istatistik (`stats.ts`), PGN dışa aktarma (`exportPgn.ts`); **tüm varsayılan eşikler `config.ts` içinde** |
 | `src/components` | React bileşenleri |
 | `src/store` | Zustand depoları: oyun/gezinme/varyant, motor, tam-oyun analizi, alıştırma, toplu istatistik, ayarlar |
+| `src/i18n` | Dil desteği: `tr.ts` ve `en.ts` sözlükleri (İngilizcede eksik anahtar derleme hatası verir), `t()` çevirisi, `useT()` kancası |
 | `src/lib` | PGN ayrıştırma, Türkçe notasyon, Lichess/Chess.com istemcisi (`onlineGames.ts`), oyun sonu veritabanı (`tablebase.ts`), hamle sesleri (`sounds.ts`) |
 | `scripts` | Stockfish dosyalarını kopyalama ve açılış kitabını üretme betikleri |
 | `data/openings` | lichess açılış veritabanı (TSV kaynak dosyaları) |
@@ -127,4 +129,4 @@ Win%, perspektif dönüşümü, mat skorları, sınıflandırma eşikleri (varsa
 - **Stockfish** ([stockfish.js](https://github.com/nmrugg/stockfish.js), lite tek iş parçacıklı sürüm) GPL-3.0 lisanslıdır. Uygulamayı dağıtırsan Stockfish’in kaynak koduna erişim sağlaman gerekir.
 - **Oyun sonu veritabanı:** [lichess tablebase API](https://tablebase.lichess.ovh) (Syzygy).
 - **Açılış veritabanı:** [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), CC0 (kamu malı).
-- İkonlar, renkler ve hamle sesleri bu proje için üretilmiştir.
+- İkonlar, renkler ve yedek hamle sesleri bu proje için üretilmiştir. `public/sounds/` klasörü yalnızca yerelde kullanılır ve depoya/siteye konmaz.
